@@ -29,3 +29,25 @@ export interface ResumenFiscal {
     totalIrpf: number;
     periodo: string; // "MM-YYYY"
 }
+
+export type RegimenTributario = 'general' | 'literal_e' | 'sas' | 'monotributo' | 'sociedad';
+
+export type SituacionFamiliar = 'sin_carga' | 'con_hijos' | 'con_conyuge_hijos';
+
+export type MonotributoCategoria = 'm_social' | 'm_unipersonal' | 'm_asociativa' | 'm_profesional'; // Simplified categories
+
+export interface CompanyConfig {
+    razonSocial: string;
+    rut: string;
+    regimen: RegimenTributario;
+    fechaInicio: Date;
+    anioEgreso?: Date; // Opcional, para cálculo de Fondo Sol.
+    situacionFamiliar: SituacionFamiliar;
+    categoriaCJPPU?: number; // 1-10
+    categoriaMonotributo?: MonotributoCategoria;
+    aportes: {
+        fonasa: boolean;
+        cajaProfesional: boolean;
+        fondoSolidaridad: boolean;
+    };
+}

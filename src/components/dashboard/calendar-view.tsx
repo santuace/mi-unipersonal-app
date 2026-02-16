@@ -11,7 +11,9 @@ import { useState } from "react"
 import { format, isSameDay } from "date-fns"
 import { es } from "date-fns/locale"
 import { getAllTaxDeadlines } from "@/lib/uruguay-taxes"
-import { CalendarDays, CheckCircle2, Circle } from "lucide-react"
+import { CalendarDays, CheckCircle2, Circle, RefreshCw, Loader2 } from "lucide-react"
+import { syncCalendarAction } from "@/app/actions/calendar"
+import { toast } from "sonner"
 
 export function CalendarView() {
     const invoices = useInvoiceStore((state) => state.invoices)
@@ -19,10 +21,142 @@ export function CalendarView() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedEvent, setSelectedEvent] = useState<any>(null)
+    const [isSyncing, setIsSyncing] = useState(false)
 
     // Get automatic tax deadlines for current year
     const currentYear = new Date().getFullYear()
     const taxDeadlines = getAllTaxDeadlines(currentYear)
+
+    // ... (rest of getEventsForDate, getAllEventDates) ...
+    // Note: I need to preserve the helper functions. Since I can't selectively keep them without copying 100 lines, 
+    // I will try to target the top part (imports + verified Start) and the render part separately?
+    // replace_file_content allows replacing a block.
+    // I will replace from "use client" to the end of `CardHeader` to insert the button.
+
+    // Actually, I can replace just the Component Start to add State, and then CardHeader to add Button.
+    // But `replace_file_content` is single contiguous block.
+    // I'll replace the top part including imports and component start.
+
+    // Wait, I can't define handleSync if I split.
+    // I'll rewrite the component start (imports + function start + handleSync).
+
+    const unreplacedHelpers1 = `    // Combine all events for selected date
+    const getEventsForDate = (date: Date | undefined) => {
+        if (!date) return []
+
+        const allEvents = []
+
+        // Add tax deadlines
+        const matchingDeadlines = taxDeadlines.filter(deadline =>
+            isSameDay(deadline.fecha, date)
+        )
+        allEvents.push(...matchingDeadlines.map(d => ({
+            tipo: d.tipo,
+            titulo: d.descripcion,
+            descripcion: undefined,
+            isAutomatic: true,
+            fecha: d.fecha
+        })))
+
+        // Add custom events
+        const customEvents = events.filter(event =>
+            isSameDay(new Date(event.fecha), date)
+        )
+        allEvents.push(...customEvents.map(e => ({
+            ...e,
+            isAutomatic: false
+        })))
+
+        return allEvents
+    }
+
+    // Get all dates that have events
+    const getAllEventDates = () => {
+        const dates = [
+            ...taxDeadlines.map(d => d.fecha),
+            ...events.map(e => new Date(e.fecha))
+        ]
+        return dates
+    }
+
+    const eventDates = getAllEventDates()
+    const selectedDateEvents = getEventsForDate(selectedDate)
+
+    const handleDateSelect = (date: Date | undefined) => {
+        setSelectedDate(date)
+        // Don't auto-open dialog, only when clicking "Add Event" button
+    }
+
+    const handleAddEvent = () => {
+        setSelectedEvent(null)
+        setDialogOpen(true)
+    }
+
+    const handleEditEvent = (event: any) => {
+        if (event.isAutomatic) return // Can't edit automatic events
+        setSelectedEvent(event)
+        setDialogOpen(true)
+    }
+
+    const getEventColor = (tipo: string) => {
+        switch (tipo) {
+            case 'iva-irpf':
+                return 'bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800'
+            case 'bps-cjppu':
+                return 'bg-orange-100 dark:bg-orange-950/30 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-800'
+            case 'personal':
+                return 'bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+            default:
+                return 'bg-gray-100 dark:bg-gray-950/30 text-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-800'
+        }
+    }
+
+    // Calcular fechas por tipo para el resaltado
+    const datesByType = {
+        ivaIrpf: [
+            ...taxDeadlines.filter(d => d.tipo === 'iva-irpf').map(d => d.fecha),
+            ...events.filter(e => e.tipo === 'iva-irpf').map(e => new Date(e.fecha))
+        ],
+        bpsCjppu: [
+            ...taxDeadlines.filter(d => d.tipo === 'bps-cjppu').map(d => d.fecha),
+            ...events.filter(e => e.tipo === 'bps-cjppu').map(e => new Date(e.fecha))
+        ],
+        personal: events.filter(e => e.tipo === 'personal').map(e => new Date(e.fecha)),
+        otro: events.filter(e => e.tipo === 'otro').map(e => new Date(e.fecha)),
+    }
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("es-UY", {
+            style: "currency",
+            currency: "UYU",
+            maximumFractionDigits: 0,
+        }).format(amount)
+    }
+    
+    // New Handler
+    const handleSync = async () => {
+        setIsSyncing(true)
+        const result = await syncCalendarAction()
+        
+        if (result.error) {
+            toast.error("Error al sincronizar", { 
+                description: result.error.includes("No authorized") ? "Debes iniciar sesión con Google." : result.error 
+            })
+        } else {
+            toast.success("Sincronización Exitosa", {
+                description: \`Se crearon/verificaron \${result.count} eventos en tu Google Calendar.\`
+            })
+        }
+        setIsSyncing(false)
+    }
+`
+    // Since replace_file_content works best with precise range.
+    // I will just replace the imports and start of function, and inject handleSync there?
+    // Then replace CardHeader separate?
+    // No, I can't easily inject a function in the middle without replacing the whole block or finding a good anchor.
+    // The anchor "const formatCurrency = ..." is good.
+    // I will add handleSync after formatCurrency.
+
 
     // Combine all events for selected date
     const getEventsForDate = (date: Date | undefined) => {
@@ -117,12 +251,44 @@ export function CalendarView() {
         }).format(amount)
     }
 
+    const handleSync = async () => {
+        setIsSyncing(true)
+        const result = await syncCalendarAction()
+
+        if (result.error) {
+            toast.error("Error al sincronizar", {
+                description: result.error.includes("No authorized") ? "Debes iniciar sesión con Google." : result.error
+            })
+        } else {
+            toast.success("Sincronización Exitosa", {
+                description: `Se crearon/verificaron ${result.count} eventos en tu Google Calendar.`
+            })
+        }
+        setIsSyncing(false)
+    }
+
     return (
         <>
             <div className="grid gap-4 md:grid-cols-[320px_1fr]">
                 <Card>
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Calendario Fiscal 2026</CardTitle>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">Calendario Fiscal 2026</CardTitle>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-2"
+                                onClick={handleSync}
+                                disabled={isSyncing}
+                            >
+                                {isSyncing ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                )}
+                                <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar Google'}</span>
+                            </Button>
+                        </div>
                         <div className="flex flex-wrap gap-2 pt-2 text-[10px]">
                             <Badge variant="outline" className="bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-300 border-red-300">
                                 IVA/IRPF

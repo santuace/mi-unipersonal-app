@@ -1,15 +1,104 @@
+import { SituacionFamiliar } from "@/types"
+
 export const TAX_CONSTANTS_2026 = {
     BPC: 6864, // Base de Prestaciones y Contribuciones estimada 2026
     CPE_MINIMO: 5020, // FONASA Mínimo Obligatorio 2026 (sin hijos ni pareja)
     CJPPU_ESCALON_10_MONTO: 7566, // Caja Profesional Escala 10 - Monto fijo mensual 2026
     CJPPU_ESCALON_10_ABATIDO: 6828, // Opción con fictos abatidos
-    FONDO_SOLIDARIDAD: 1200, // Mensual promedio (incluido en CJPPU_ESCALON_10_MONTO)
+    FONDO_SOLIDARIDAD: 1200, // Mensual promedio
     IVA_BASIC_RATE: 0.22,
     IVA_MIN_RATE: 0.10,
+    MONOTRIBUTO_CATEGORIAS: {
+        m_social: 1860,
+        m_unipersonal: 3450,
+        m_asociativa: 5600,
+        m_profesional: 7600
+    },
+    CJPPU_ESCALAS: [
+        7566,  // Cat 1 (Base)
+        8900,  // Cat 2
+        10200, // Cat 3
+        11500, // Cat 4
+        12900, // Cat 5
+        14300, // Cat 6
+        15800, // Cat 7
+        17400, // Cat 8
+        19100, // Cat 9
+        21000  // Cat 10
+    ]
 }
 
 export function calcularIVA(monto: number, tasa: number = TAX_CONSTANTS_2026.IVA_BASIC_RATE) {
     return monto * tasa
+}
+
+// ... (IRPF remains same)
+
+export function getMontoMonotributo(categoria: keyof typeof TAX_CONSTANTS_2026.MONOTRIBUTO_CATEGORIAS = 'm_unipersonal') {
+    return TAX_CONSTANTS_2026.MONOTRIBUTO_CATEGORIAS[categoria] || 0
+}
+
+export function getMontoCJPPU(categoria: number = 10) {
+    // categoria 1-10. Array index 0-9.
+    const index = Math.max(0, Math.min(categoria - 1, 9))
+    return TAX_CONSTANTS_2026.CJPPU_ESCALAS[index]
+}
+
+export function calcularFonasaMensual(ingresosBrutosMensuales: number, situacion: SituacionFamiliar = 'sin_carga') {
+    // Tasas segun situación familiar
+    // - Sin hijos ni pareja: 4.5%
+    // - Con hijos: 6%
+    // - Con cónyuge e hijos: 6.5%
+
+    let tasaTotal = 0.045
+    if (situacion === 'con_hijos') tasaTotal = 0.06
+    if (situacion === 'con_conyuge_hijos') tasaTotal = 0.065
+
+    const baseFonasa = ingresosBrutosMensuales * 0.70 // 70% de facturación
+    const costoCalculado = baseFonasa * tasaTotal
+
+    // El pago mensual es el mayor entre el calculado y el mínimo
+    const pagoMensualObligatorio = Math.max(costoCalculado, TAX_CONSTANTS_2026.CPE_MINIMO)
+
+    return {
+        pagoMensualObligatorio,
+        costoCalculado,
+        minimoLegal: TAX_CONSTANTS_2026.CPE_MINIMO,
+        diferencia: 0
+    }
+}
+
+export function calcularCJPPU(usarAbatido: boolean = false, anioEgreso?: Date, categoria: number = 10) {
+    // Monto según categoría (Default 10 si no se especifica, para compatibilidad con código anterior que asumía Escala 10)
+    // Pero el Wizard pasará la categoría elegida.
+    // Si 'usarAbatido' is true, we might need a separate scale, but for MVP we ignore it or assume Scale 1 is abatido-like?
+    // Let's stick to the Scale array.
+
+    const montoMensual = getMontoCJPPU(categoria)
+
+    // Fondo de Solidaridad
+    let fondoSolidaridad = TAX_CONSTANTS_2026.FONDO_SOLIDARIDAD
+
+    if (anioEgreso) {
+        const hoy = new Date()
+        const aniosDesdeEgreso = hoy.getFullYear() - anioEgreso.getFullYear()
+
+        // Menos de 5 años: Exento
+        if (aniosDesdeEgreso < 5) {
+            fondoSolidaridad = 0
+        }
+        // Entre 5 y 10 años: 50%
+        else if (aniosDesdeEgreso < 10) {
+            fondoSolidaridad = fondoSolidaridad * 0.5
+        }
+        // > 10 años: 100%
+    }
+
+    return {
+        cajaProfesional: montoMensual,
+        fondoSolidaridad: fondoSolidaridad,
+        total: montoMensual + fondoSolidaridad
+    }
 }
 
 /**
@@ -93,40 +182,6 @@ export function calcularIRPFMensual(ingresosBrutosMes: number) {
     return impuesto
 }
 
-export function calcularFonasaMensual(ingresosBrutosMensuales: number, tieneHijos: boolean = false, tieneConyuge: boolean = false) {
-    // Pago mensual obligatorio: Mínimo 2026 = $5.020
-    // Tasa: 4.5% sobre el 70% de facturación (sin hijos ni pareja)
-    // Pero si no llega al mínimo, se paga el mínimo
-
-    const tasaBase = 0.045 // 4.5% para caso sin hijos ni pareja
-    const tasaAdicional = (tieneHijos ? 0.015 : 0) + (tieneConyuge ? 0.02 : 0)
-    const tasaTotal = tasaBase + tasaAdicional
-
-    const baseFonasa = ingresosBrutosMensuales * 0.70 // 70% de facturación
-    const costoCalculado = baseFonasa * tasaTotal
-
-    // El pago mensual es el mayor entre el calculado y el mínimo
-    const pagoMensualObligatorio = Math.max(costoCalculado, TAX_CONSTANTS_2026.CPE_MINIMO)
-
-    return {
-        pagoMensualObligatorio, // Lo que realmente pagas cada mes
-        costoCalculado,         // Lo que sale según el cálculo
-        minimoLegal: TAX_CONSTANTS_2026.CPE_MINIMO,
-        diferencia: 0 // Simplificado - ya no calculamos deuda anual
-    }
-}
-
-export function calcularCJPPU(usarAbatido: boolean = false) {
-    // Escala 10 - Monto fijo mensual
-    const montoMensual = usarAbatido ? TAX_CONSTANTS_2026.CJPPU_ESCALON_10_ABATIDO : TAX_CONSTANTS_2026.CJPPU_ESCALON_10_MONTO
-    const fondoSolidaridad = TAX_CONSTANTS_2026.FONDO_SOLIDARIDAD
-
-    return {
-        cajaProfesional: montoMensual,
-        fondoSolidaridad: fondoSolidaridad,
-        total: montoMensual + fondoSolidaridad
-    }
-}
 
 // ============================================
 // UTILIDADES DE CICLO BIMESTRAL
