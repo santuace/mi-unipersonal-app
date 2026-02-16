@@ -1,0 +1,2559 @@
+### src/types/index.ts
+```tsx
+export type TipoIva = 22 | 10 | 0;
+
+export interface Factura {
+    id: string;
+    fecha: Date;
+    cliente: string;
+    concepto: string;
+    montoNeto: number;
+    tipoIva: TipoIva;
+    retencionIrpf: boolean; // Si aplica retención (7%)
+    ivaCalculado: number;
+    montoRetencion: number; // Monto retenido (Neto * 0.07)
+    totalPagar: number; // Total Facturado (Neto + IVA). Lo recibido es Total - Retención.
+    // Normalmente: Neto + IVA - IRPF (si es retenido) = Liquido
+    // O Neto + IVA = Total Facturado
+
+    // Asumamos:
+    // Total Facturado = Neto + IVA
+    // Liquido a Cobrar = Neto + IVA - IRPF (si aplica retención directa)
+    // Pero el usuario dijo "sepa cuanto pagar de IVA e IRPF".
+    // Así que guardamos los valores calculados para reportes.
+
+    estado: 'pendiente' | 'cobrada' | 'anulada';
+}
+
+export interface ResumenFiscal {
+    totalFacturado: number;
+    totalIva: number;
+    totalIrpf: number;
+    periodo: string; // "MM-YYYY"
+}
+```
+
+### src/app/layout.tsx
+```tsx
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'Mi Unipersonal',
+  description: 'Gestión de facturas e impuestos',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="es" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+### src/app/page.tsx
+```tsx
+"use client"
+
+import Image from "next/image"
+
+import { InvoiceForm } from "@/components/invoices/invoice-form"
+import { InvoiceList } from "@/components/invoices/invoice-list"
+import { ExpenseForm } from "@/components/expenses/expense-form"
+import { ExpenseList } from "@/components/expenses/expense-list"
+import { TaxSummary } from "@/components/dashboard/tax-summary"
+import { CalendarView } from "@/components/dashboard/calendar-view"
+import { IncomeSimulator } from "@/components/tools/income-simulator"
+import { Notifications } from "@/components/notifications/notifications"
+import { ModeToggle } from "@/components/mode-toggle"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Plus, Minus } from "lucide-react"
+import { useState } from "react"
+import { Toaster } from "sonner"
+
+export default function Home() {
+  const [openInvoice, setOpenInvoice] = useState(false)
+  const [openExpense, setOpenExpense] = useState(false)
+
+  return (
+    <main className="min-h-screen bg-background">
+      <Notifications />
+      <div className="max-w-7xl mx-auto p-4 space-y-4">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b pb-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex flex-col items-start gap-1">
+              <Image
+                src="/logo-ox.png"
+                alt="Logo Estudio"
+                width={150}
+                height={40}
+                className="h-10 w-auto object-contain"
+                priority
+              />
+              <span>Mi Unipersonal</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">Gestión fiscal inteligente (Ley 20.410)</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <ModeToggle />
+
+            <Dialog open={openExpense} onOpenChange={setOpenExpense}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-2 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20 px-3">
+                  <Minus className="h-3.5 w-3.5" />
+                  Gasto
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Registrar Gasto Deducible</DialogTitle>
+                  <DialogDescription>
+                    Ingresa gastos operativos para descontar IVA.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-2">
+                  <ExpenseForm />
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={openInvoice} onOpenChange={setOpenInvoice}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 gap-2 px-3">
+                  <Plus className="h-3.5 w-3.5" />
+                  Factura
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Ingresar Nueva Factura</DialogTitle>
+                  <DialogDescription>
+                    Completa los datos. El sistema calculará IRPF y apartados automáticamente.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-2">
+                  <InvoiceForm />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </header>
+
+        <Tabs defaultValue="dashboard" className="space-y-4">
+          <TabsList className="h-9">
+            <TabsTrigger value="dashboard" className="text-xs">Dashboard</TabsTrigger>
+            <TabsTrigger value="tools" className="text-xs">Simulador</TabsTrigger>
+            <TabsTrigger value="calendar" className="text-xs">Calendario</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-4">
+            <TaxSummary />
+            <div className="grid gap-4">
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold tracking-tight uppercase text-muted-foreground">Ingresos Recientes</h2>
+                <InvoiceList />
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold tracking-tight uppercase text-muted-foreground">Gastos Deducibles (IVA Compras)</h2>
+                <ExpenseList />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="tools" className="space-y-4">
+            <div className="max-w-2xl mx-auto">
+              <IncomeSimulator />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-4">
+            <CalendarView />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </main>
+  )
+}
+```
+
+### src/components/theme-provider.tsx
+```tsx
+"use client"
+
+import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { type ThemeProviderProps } from "next-themes"
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+    return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+```
+
+### src/components/tools/income-simulator.tsx
+```tsx
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Slider } from "@/components/ui/slider"
+import { calcularIRPFMensual, calcularFonasaMensual, calcularCJPPU, TAX_CONSTANTS_2026 } from "@/lib/uruguay-taxes"
+import { TrendingUp, TrendingDown, DollarSign } from "lucide-react"
+
+export function IncomeSimulator() {
+    const [ingresoMensual, setIngresoMensual] = useState([140000]) // Default user value
+
+    const ingreso = ingresoMensual[0]
+
+    // Cálculos en tiempo real
+    const iva = ingreso * 0.22
+    const totalFacturado = ingreso + iva
+
+    const irpf = calcularIRPFMensual(ingreso)
+    const fonasa = calcularFonasaMensual(ingreso).pagoMensualObligatorio
+
+    // Profesionales en Caja: pagan CJPPU + Fondo + Fonasa
+    const cjppuResult = calcularCJPPU()
+    const cjppu = cjppuResult.cajaProfesional
+    const fondo = cjppuResult.fondoSolidaridad
+
+    const totalImpuestos = iva + irpf + fonasa + cjppu + fondo
+    const liquido = totalFacturado - totalImpuestos
+
+    // Porcentaje real de impuestos sobre lo facturado
+    const presionFiscal = (totalImpuestos / totalFacturado) * 100
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("es-UY", {
+            style: "currency",
+            currency: "UYU",
+            maximumFractionDigits: 0,
+        }).format(amount)
+    }
+
+    return (
+        <Card className="w-full">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Simulador de Sueldo Líquido
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Ajusta tu facturación mensual (sin IVA) para ver el impacto en tus bolsillos.
+                </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <span className="font-medium">Ingreso Neto Mensual</span>
+                        <span className="text-2xl font-bold text-primary">{formatCurrency(ingreso)}</span>
+                    </div>
+                    <Slider
+                        defaultValue={[140000]}
+                        max={300000}
+                        step={1000}
+                        onValueChange={setIngresoMensual}
+                        className="py-4"
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                    <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-muted-foreground">Desglose de Costos</h4>
+                        <div className="flex justify-between text-sm">
+                            <span>IVA (Pasamanos):</span>
+                            <span className="font-mono text-red-500">{formatCurrency(iva)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span>IRPF (Anticipo):</span>
+                            <span className="font-mono text-orange-500">{formatCurrency(irpf)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span>Fonasa (Mínimo):</span>
+                            <span className="font-mono text-blue-500">{formatCurrency(fonasa)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span>Caja Profesional:</span>
+                            <span className="font-mono text-purple-500">{formatCurrency(cjppu)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span>Fondo Solidaridad:</span>
+                            <span className="font-mono text-purple-400">{formatCurrency(fondo)}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-2 italic">
+                            * Profesionales en Caja pagan: Caja + Fonasa
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 bg-muted/30 p-4 rounded-lg">
+                        <div className="flex justify-between items-end">
+                            <span className="text-sm font-medium">Líquido Real en Mano</span>
+                            <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {formatCurrency(liquido)}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <TrendingDown className="h-4 w-4 text-red-500" />
+                            Presión Fiscal Real: {presionFiscal.toFixed(1)}% del total facturado.
+                        </div>
+
+                        {presionFiscal > 40 && (
+                            <div className="text-xs text-orange-600 bg-orange-100 dark:bg-orange-900/30 p-2 rounded">
+                                ⚠️ Ojo: Estás entrando en terreno peligroso de IRPF. Considera gastos deducibles.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+```
+
+### src/components/calendar/event-dialog.tsx
+```tsx
+"use client"
+
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CalendarEvent, EventType, useCalendarEventStore } from "@/store/calendar-events"
+import { useState, useEffect } from "react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+
+interface EventDialogProps {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    selectedDate: Date | null
+    existingEvent?: CalendarEvent | null
+}
+
+export function EventDialog({ open, onOpenChange, selectedDate, existingEvent }: EventDialogProps) {
+    const { addEvent, updateEvent, removeEvent } = useCalendarEventStore()
+
+    const [titulo, setTitulo] = useState("")
+    const [descripcion, setDescripcion] = useState("")
+    const [tipo, setTipo] = useState<EventType>("personal")
+    const [monto, setMonto] = useState<string>("")
+
+    // Reset form when dialog opens/closes or when editing
+    useEffect(() => {
+        if (open) {
+            if (existingEvent) {
+                setTitulo(existingEvent.titulo)
+                setDescripcion(existingEvent.descripcion || "")
+                setTipo(existingEvent.tipo)
+                setMonto(existingEvent.monto?.toString() || "")
+            } else {
+                setTitulo("")
+                setDescripcion("")
+                setTipo("personal")
+                setMonto("")
+            }
+        }
+    }, [open, existingEvent])
+
+    const handleSave = () => {
+        if (!titulo.trim()) return
+        if (!selectedDate) return
+
+        const eventData = {
+            titulo: titulo.trim(),
+            descripcion: descripcion.trim() || undefined,
+            fecha: selectedDate,
+            tipo,
+            monto: monto ? parseFloat(monto) : undefined,
+            completado: existingEvent?.completado || false
+        }
+
+        if (existingEvent) {
+            updateEvent(existingEvent.id, eventData)
+        } else {
+            addEvent(eventData)
+        }
+
+        onOpenChange(false)
+    }
+
+    const handleDelete = () => {
+        if (existingEvent) {
+            removeEvent(existingEvent.id)
+            onOpenChange(false)
+        }
+    }
+
+    if (!selectedDate) return null
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>
+                        {existingEvent ? "Editar Evento" : "Agregar Evento"}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {format(selectedDate, "EEEE d 'de' MMMM, yyyy", { locale: es })}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="titulo">Título *</Label>
+                        <Input
+                            id="titulo"
+                            value={titulo}
+                            onChange={(e) => setTitulo(e.target.value)}
+                            placeholder="Ej: Reunión con contador"
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="tipo">Tipo</Label>
+                        <Select value={tipo} onValueChange={(value) => setTipo(value as EventType)}>
+                            <SelectTrigger id="tipo">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="personal">Personal</SelectItem>
+                                <SelectItem value="otro">Otro</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="descripcion">Descripción</Label>
+                        <Textarea
+                            id="descripcion"
+                            value={descripcion}
+                            onChange={(e) => setDescripcion(e.target.value)}
+                            placeholder="Detalles adicionales (opcional)"
+                            rows={3}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="monto">Monto estimado (opcional)</Label>
+                        <Input
+                            id="monto"
+                            type="number"
+                            value={monto}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMonto(e.target.value)}
+                            placeholder="0"
+                        />
+                    </div>
+                </div>
+
+                <DialogFooter className="flex justify-between">
+                    {existingEvent && (
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            className="mr-auto"
+                        >
+                            Eliminar
+                        </Button>
+                    )}
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleSave} disabled={!titulo.trim()}>
+                            {existingEvent ? "Guardar" : "Agregar"}
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+```
+
+### src/components/invoices/invoice-form.tsx
+```tsx
+"use client"
+
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { toast } from "sonner"
+import { useInvoiceStore } from "@/store/invoices"
+import { DocumentScanner } from "@/components/ocr/document-scanner"
+
+import { TipoIva } from "@/types"
+
+const formSchema = z.object({
+    cliente: z.string().min(2, {
+        message: "El nombre del cliente debe tener al menos 2 caracteres.",
+    }),
+    concepto: z.string().min(2, {
+        message: "El concepto debe tener al menos 2 caracteres.",
+    }),
+    montoNeto: z.coerce.number().min(0.01, {
+        message: "El monto debe ser mayor a 0.",
+    }),
+    fecha: z.date({
+        message: "La fecha es requerida.",
+    }).refine((date) => date !== null, {
+        message: "La fecha es requerida.",
+    }),
+    tipoIva: z.coerce.number().refine((val) => [22, 10, 0].includes(val), {
+        message: "Tipo de IVA inválido",
+    }),
+    retencionIrpf: z.boolean().default(false),
+})
+
+export function InvoiceForm() {
+    const addInvoice = useInvoiceStore((state) => state.addInvoice)
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema) as any,
+        defaultValues: {
+            cliente: "",
+            concepto: "",
+            montoNeto: 0,
+            tipoIva: 22,
+            retencionIrpf: false,
+        },
+    })
+
+    function onSubmit(values: z.infer<typeof formSchema>) {
+        const ivaCalculado = values.montoNeto * (values.tipoIva / 100)
+        // IRPF Retention is fixed at 7% if applicable for standard invoices
+        const montoRetencion = values.retencionIrpf ? values.montoNeto * 0.07 : 0
+
+        // Total Facturado (Net + IVA)
+        // Note: The store expects 'totalPagar' to be the invoiced amount.
+        // The cash received would be 'total - montoRetencion'.
+        const total = values.montoNeto + ivaCalculado
+
+        addInvoice({
+            ...values,
+            tipoIva: values.tipoIva as TipoIva,
+            retencionIrpf: values.retencionIrpf,
+            ivaCalculado,
+            montoRetencion,
+            totalPagar: total,
+            estado: 'pendiente',
+        })
+
+        toast.success("Factura agregada correctamente")
+        form.reset({
+            cliente: "",
+            concepto: "",
+            montoNeto: 0,
+            tipoIva: 22,
+            retencionIrpf: false,
+            fecha: new Date(),
+        })
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="mb-4">
+                <label className="text-sm font-medium mb-2 block">Autocompletar con Factura (OCR)</label>
+                <DocumentScanner onScanComplete={(data) => {
+                    // Asumimos que lo escaneado es el total, despejamos IVA basico por defecto si no se detecta otra cosa
+                    // O mejor: seteamos el total como neto y que el usuario ajuste.
+                    if (data.montoTotal) form.setValue('montoNeto', data.montoTotal)
+                    if (data.fecha) form.setValue('fecha', data.fecha)
+                    // En ingreso, el 'proveedor' detectado seria el emisor (nosotros), asi que no sirve de mucho 
+                    // a menos que sea una factura de compra.
+                    // Pero si detectamos texto, lo podemos poner en concepto.
+                    form.setValue('concepto', `Factura ${data.rut || ''}`)
+                }} />
+            </div>
+
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 border rounded-lg shadow-sm bg-card text-card-foreground">
+                    <h2 className="text-xl font-semibold mb-4">Nueva Factura</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="fecha"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Fecha</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    variant={"outline"}
+                                                    className={cn(
+                                                        "w-full pl-3 text-left font-normal",
+                                                        !field.value && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {field.value ? (
+                                                        format(field.value, "PPP")
+                                                    ) : (
+                                                        <span>Seleccionar fecha</span>
+                                                    )}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                disabled={(date) =>
+                                                    date > new Date() || date < new Date("1900-01-01")
+                                                }
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="cliente"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Cliente</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Nombre del cliente" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <FormField
+                        control={form.control}
+                        name="concepto"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Concepto</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Servicios de..." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="montoNeto"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Monto Neto</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="0.01" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="tipoIva"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>IVA (%)</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Seleccionar IVA" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="22">22% (Básico)</SelectItem>
+                                            <SelectItem value="10">10% (Mínimo)</SelectItem>
+                                            <SelectItem value="0">Exento</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <FormField
+                        control={form.control}
+                        name="retencionIrpf"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center gap-3 space-y-0 rounded-lg border p-4 shadow-sm bg-muted/20">
+                                <FormControl>
+                                    <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        className="h-5 w-5"
+                                    />
+                                </FormControl>
+                                <div className="space-y-1 leading-none flex-1">
+                                    <FormLabel className="text-base font-medium">
+                                        Aplicar Retención IRPF (7%)
+                                    </FormLabel>
+                                    <FormDescription className="text-sm text-muted-foreground">
+                                        Marcar si el cliente es agente de retención (ej. grandes empresas).
+                                    </FormDescription>
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+
+                    <Button type="submit" className="w-full">Guardar Factura</Button>
+                </form>
+            </Form>
+        </div >
+    )
+}
+```
+
+### src/components/invoices/invoice-list.tsx
+```tsx
+"use client"
+
+import { useInvoiceStore } from "@/store/invoices"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Trash2, AlertTriangle } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { useState } from "react"
+
+export function InvoiceList() {
+    const { invoices, removeInvoice } = useInvoiceStore()
+    const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null)
+
+    if (invoices.length === 0) {
+        return (
+            <div className="text-center p-8 border rounded-lg bg-muted/20">
+                <p className="text-muted-foreground">No hay facturas registradas.</p>
+            </div>
+        )
+    }
+
+    const handleDelete = (id: string) => {
+        removeInvoice(id)
+        setInvoiceToDelete(null)
+    }
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("es-UY", {
+            style: "currency",
+            currency: "UYU",
+            maximumFractionDigits: 0,
+        }).format(amount)
+    }
+
+    return (
+        <div className="rounded-md border bg-card overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="text-xs whitespace-nowrap">Fecha</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap">Cliente</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap max-w-[150px]">Concepto</TableHead>
+                        <TableHead className="text-right text-xs whitespace-nowrap">Monto Neto</TableHead>
+                        <TableHead className="text-right text-xs whitespace-nowrap">IVA</TableHead>
+                        <TableHead className="text-right text-xs whitespace-nowrap">Retención (7%)</TableHead>
+                        <TableHead className="text-right text-xs whitespace-nowrap">Total Facturado</TableHead>
+                        <TableHead className="w-[50px] text-center text-xs">Acción</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {invoices.map((invoice) => (
+                        <TableRow key={invoice.id}>
+                            <TableCell className="text-xs whitespace-nowrap">{format(new Date(invoice.fecha), "dd/MM/yyyy", { locale: es })}</TableCell>
+                            <TableCell className="font-medium text-xs whitespace-nowrap">{invoice.cliente}</TableCell>
+                            <TableCell className="text-xs max-w-[150px] truncate" title={invoice.concepto}>{invoice.concepto}</TableCell>
+                            <TableCell className="text-right text-xs whitespace-nowrap">{formatCurrency(invoice.montoNeto)}</TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">{formatCurrency(invoice.ivaCalculado)}</TableCell>
+                            <TableCell className="text-right text-xs text-red-500 whitespace-nowrap">
+                                {invoice.retencionIrpf ? (
+                                    <span title="Retención aplicada">
+                                        -{formatCurrency(invoice.montoRetencion || 0)}
+                                        <span className="ml-1 text-[10px] text-muted-foreground/70">(Ret.)</span>
+                                    </span>
+                                ) : "-"}
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-bold whitespace-nowrap">{formatCurrency(invoice.totalPagar)}</TableCell>
+                            <TableCell className="text-center">
+                                <Dialog open={invoiceToDelete === invoice.id} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+                                    <DialogTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                            onClick={() => setInvoiceToDelete(invoice.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle className="flex items-center gap-2 text-destructive">
+                                                <AlertTriangle className="h-5 w-5" />
+                                                ¿Confirmar eliminación?
+                                            </DialogTitle>
+                                            <DialogDescription className="py-2">
+                                                Estás a punto de borrar la factura de <strong>{invoice.cliente}</strong> por un monto de <strong>{formatCurrency(invoice.totalPagar)}</strong>. Esta acción no se puede deshacer.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <DialogFooter className="gap-2 sm:gap-0">
+                                            <Button variant="outline" onClick={() => setInvoiceToDelete(null)}>Cancelar</Button>
+                                            <Button variant="destructive" onClick={() => handleDelete(invoice.id)}>Eliminar Factura</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    )
+}
+```
+
+### src/components/expenses/expense-list.tsx
+```tsx
+"use client"
+
+import { useExpenseStore } from "@/store/expenses"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Trash2, AlertTriangle } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { useState, useEffect } from "react"
+import { Badge } from "@/components/ui/badge"
+
+export function ExpenseList() {
+    const { gastos, removeGasto } = useExpenseStore()
+    const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null)
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
+    if (!isMounted) {
+        return null // O un skeleton
+    }
+
+
+    if (!gastos || gastos.length === 0) {
+        return (
+            <div className="text-center p-8 border rounded-lg bg-muted/20">
+                <p className="text-muted-foreground">No hay gastos registrados.</p>
+            </div>
+        )
+    }
+
+    const handleDelete = (id: string) => {
+        removeGasto(id)
+        setExpenseToDelete(null)
+    }
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("es-UY", {
+            style: "currency",
+            currency: "UYU",
+            maximumFractionDigits: 0,
+        }).format(amount)
+    }
+
+    return (
+        <div className="rounded-md border bg-card overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="text-xs whitespace-nowrap">Fecha</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap">Proveedor</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap max-w-[150px]">Descripción</TableHead>
+                        <TableHead className="text-xs whitespace-nowrap">Categoría</TableHead>
+                        <TableHead className="text-right text-xs whitespace-nowrap">Monto Total</TableHead>
+                        <TableHead className="text-right text-xs whitespace-nowrap">IVA Deducible</TableHead>
+                        <TableHead className="w-[50px] text-center text-xs">Acción</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {gastos.map((gasto) => (
+                        <TableRow key={gasto.id}>
+                            <TableCell className="text-xs whitespace-nowrap">{format(new Date(gasto.fecha), "dd/MM/yyyy", { locale: es })}</TableCell>
+                            <TableCell className="font-medium text-xs whitespace-nowrap">{gasto.proveedor}</TableCell>
+                            <TableCell className="text-xs max-w-[150px] truncate" title={gasto.descripcion}>{gasto.descripcion}</TableCell>
+                            <TableCell className="text-xs">
+                                <Badge variant="outline" className="text-[10px] font-normal">
+                                    {gasto.categoria}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="text-right text-xs whitespace-nowrap">{formatCurrency(gasto.montoTotal)}</TableCell>
+                            <TableCell className="text-right text-xs text-blue-600 font-medium whitespace-nowrap">
+                                {formatCurrency(gasto.ivaDeducible)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                                <Dialog open={expenseToDelete === gasto.id} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
+                                    <DialogTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                            onClick={() => setExpenseToDelete(gasto.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle className="flex items-center gap-2 text-destructive">
+                                                <AlertTriangle className="h-5 w-5" />
+                                                ¿Confirmar eliminación?
+                                            </DialogTitle>
+                                            <DialogDescription className="py-2">
+                                                Estás a punto de borrar el gasto de <strong>{gasto.proveedor}</strong> por <strong>{formatCurrency(gasto.montoTotal)}</strong>.
+                                                <br />Se eliminará el descuento de IVA asociado.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <DialogFooter className="gap-2 sm:gap-0">
+                                            <Button variant="outline" onClick={() => setExpenseToDelete(null)}>Cancelar</Button>
+                                            <Button variant="destructive" onClick={() => handleDelete(gasto.id)}>Eliminar Gasto</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    )
+}
+```
+
+### src/components/expenses/expense-form.tsx
+```tsx
+"use client"
+
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { toast } from "sonner"
+import { useExpenseStore } from "@/store/expenses"
+import { DocumentScanner } from "@/components/ocr/document-scanner"
+
+const expenseSchema = z.object({
+    descripcion: z.string().min(2, "Descripción requerida"),
+    proveedor: z.string().min(2, "Proveedor requerido"),
+    montoTotal: z.coerce.number().min(1, "Monto debe ser mayor a 0"),
+    tasaIva: z.coerce.number(),
+    categoria: z.enum(['Oficina', 'Equipos', 'Servicios', 'Otros']),
+    fecha: z.date(),
+})
+
+export function ExpenseForm() {
+    const addGasto = useExpenseStore((state) => state.addGasto)
+
+    const form = useForm<z.infer<typeof expenseSchema>>({
+        resolver: zodResolver(expenseSchema) as any,
+        defaultValues: {
+            descripcion: "",
+            proveedor: "",
+            montoTotal: 0,
+            tasaIva: 0.22,
+            categoria: 'Otros',
+            fecha: new Date(),
+        },
+    })
+
+    function onSubmit(values: z.infer<typeof expenseSchema>) {
+        // @ts-ignore: tasaIva cast issue
+        addGasto(values)
+        toast.success("Gasto registrado", {
+            description: `Se descontará IVA del cálculo final.`
+        })
+        form.reset({
+            descripcion: "",
+            proveedor: "",
+            montoTotal: 0,
+            tasaIva: 0.22,
+            categoria: 'Otros',
+            fecha: new Date(),
+        })
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="mb-4">
+                <label className="text-sm font-medium mb-2 block">Cargar Factura (OCR)</label>
+                <DocumentScanner onScanComplete={(data) => {
+                    if (data.montoTotal) form.setValue('montoTotal', data.montoTotal)
+                    if (data.fecha) form.setValue('fecha', data.fecha)
+                    if (data.posibleProveedor) form.setValue('proveedor', data.posibleProveedor)
+                    if (data.rut) toast.info(`RUT Detectado: ${data.rut}`)
+
+                    form.setValue('descripcion', `Gasto escaneado ${data.posibleProveedor || ''}`)
+                }} />
+            </div>
+
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                        control={form.control}
+                        name="fecha"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Fecha</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value ? (
+                                                    format(field.value, "PPP")
+                                                ) : (
+                                                    <span>Seleccionar fecha</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            disabled={(date) =>
+                                                date > new Date() || date < new Date("1900-01-01")
+                                            }
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="proveedor"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Proveedor</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Antel, UTE, etc." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="montoTotal"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Monto Total (c/IVA)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="tasaIva"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Tasa IVA</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="22%" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="0.22">22%</SelectItem>
+                                            <SelectItem value="0.10">10%</SelectItem>
+                                            <SelectItem value="0">Exento</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="categoria"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Categoría</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Categoría" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Oficina">Oficina</SelectItem>
+                                            <SelectItem value="Equipos">Equipos</SelectItem>
+                                            <SelectItem value="Servicios">Servicios</SelectItem>
+                                            <SelectItem value="Otros">Otros</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <FormField
+                        control={form.control}
+                        name="descripcion"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Descripción</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Detalle del gasto" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <Button type="submit" className="w-full">Registrar Gasto</Button>
+                </form>
+            </Form>
+        </div>
+    )
+}
+```
+
+### src/components/ocr/document-scanner.tsx
+```tsx
+"use client"
+
+import { useCallback, useState } from 'react'
+import { useDropzone } from 'react-dropzone'
+import Tesseract from 'tesseract.js'
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Loader2, Upload, FileText, CheckCircle2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { parseInvoiceText, ExtractedData } from '@/lib/ocr-parser'
+import { toast } from "sonner"
+
+interface DocumentScannerProps {
+    onScanComplete: (data: ExtractedData, text: string) => void;
+}
+
+export function DocumentScanner({ onScanComplete }: DocumentScannerProps) {
+    const [isScanning, setIsScanning] = useState(false)
+    const [progress, setProgress] = useState(0)
+    const [status, setStatus] = useState("")
+
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        const file = acceptedFiles[0]
+        if (!file) return
+
+        processFile(file)
+    }, [])
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
+            'application/pdf': ['.pdf'] // Tesseract supports images, for PDF we might need conversion or just stick to images for MVP
+        },
+        maxFiles: 1
+    })
+
+    const processFile = async (file: File) => {
+        setIsScanning(true)
+        setProgress(0)
+        setStatus("Inicializando motor OCR...")
+
+        const imageUrl = URL.createObjectURL(file);
+
+        try {
+            const worker = await Tesseract.createWorker('spa', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        setProgress(m.progress * 100)
+                        setStatus(`Escaneando: ${Math.round(m.progress * 100)}%`)
+                    } else {
+                        setStatus(m.status)
+                    }
+                },
+                errorHandler: (err) => console.error(err)
+            });
+
+            const { data: { text } } = await worker.recognize(imageUrl);
+
+            await worker.terminate();
+
+            setStatus("Analizando datos...")
+            const extracted = parseInvoiceText(text)
+
+            toast.success("Documento procesado", {
+                description: extracted.montoTotal ? `Monto detectado: $${extracted.montoTotal}` : "Revise los datos extraídos."
+            })
+
+            onScanComplete(extracted, text)
+
+        } catch (error: any) {
+            console.error(error)
+            setStatus("Error")
+            toast.error("Error al escanear", {
+                description: error.message || "No se pudo leer el archivo. Intente con una imagen más clara."
+            })
+        } finally {
+            URL.revokeObjectURL(imageUrl);
+            setIsScanning(false)
+            setProgress(100)
+            if (status !== "Error") setStatus("Listo")
+        }
+    }
+
+    return (
+        <Card className="border-dashed border-2 hover:border-primary/50 transition-colors">
+            <CardContent className="p-0">
+                <div
+                    {...getRootProps()}
+                    className={`
+                flex flex-col items-center justify-center p-8 cursor-pointer min-h-[150px]
+                ${isDragActive ? 'bg-primary/5' : ''}
+            `}
+                >
+                    <input {...getInputProps()} />
+
+                    {isScanning ? (
+                        <div className="w-full space-y-4 max-w-xs text-center">
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">{status}</p>
+                                <Progress value={progress} className="h-2" />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center space-y-2">
+                            <div className="bg-muted rounded-full p-4 w-fit mx-auto">
+                                <Upload className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium">Arrastra tu factura aquí</p>
+                                <p className="text-xs text-muted-foreground">o haz clic para seleccionar (Imagen)</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+```
+
+### src/components/dashboard/tax-summary.tsx
+```tsx
+"use client"
+
+import { useInvoiceStore } from "@/store/invoices"
+import { useExpenseStore } from "@/store/expenses"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { ArrowUpRight, ArrowDownRight, DollarSign, Wallet, PiggyBank, Landmark, Calendar, Clock } from "lucide-react"
+import {
+    calcularIRPFMensual,
+    calcularFonasaMensual,
+    calcularCJPPU,
+    getBimestreActual,
+    getProximoVencimiento,
+    diasHastaVencimiento
+} from "@/lib/uruguay-taxes"
+import { format, isSameMonth } from "date-fns"
+import { es } from "date-fns/locale"
+
+import { useMemo } from "react"
+
+export function TaxSummary() {
+    const invoices = useInvoiceStore((state) => state.invoices)
+    const expenses = useExpenseStore((state) => state.gastos)
+
+    // ============================================
+    // CONTEXTO TEMPORAL (Vencimientos: Bimestre / Datos: Mes)
+    // ============================================
+    const bimestreActual = getBimestreActual()
+    const proximoVencimiento = getProximoVencimiento()
+    const diasRestantes = diasHastaVencimiento()
+    const hoy = new Date()
+
+    // Usar useMemo para cálculos costosos
+    const { totalVentas, totalCompras, calculosFiscales } = useMemo(() => {
+        // Filtrar facturas del MES actual
+        const facturasMes = invoices.filter(inv =>
+            isSameMonth(new Date(inv.fecha), hoy)
+        )
+
+        // Filtrar gastos del MES actual
+        const gastosMes = expenses.filter(exp =>
+            isSameMonth(new Date(exp.fecha), hoy)
+        )
+
+        // 1. Calcular Totales de Ventas del Mes
+        const ventas = facturasMes.reduce(
+            (acc, inv) => ({
+                neto: acc.neto + inv.montoNeto,
+                iva: acc.iva + inv.ivaCalculado,
+                retencion: acc.retencion + (inv.montoRetencion || 0),
+                total: acc.total + inv.totalPagar,
+                count: acc.count + 1
+            }),
+            { neto: 0, iva: 0, retencion: 0, total: 0, count: 0 }
+        )
+
+        // 2. Calcular Totales de Compras (Gastos) del Mes
+        const compras = gastosMes.reduce(
+            (acc, exp) => ({
+                ivaDeducible: acc.ivaDeducible + exp.ivaDeducible,
+            }),
+            { ivaDeducible: 0 }
+        )
+
+        // 3. Cálculos Fiscales Mensuales
+        const ivaAPagar = Math.max(0, ventas.iva - compras.ivaDeducible)
+        const irpfEstimado = calcularIRPFMensual(ventas.neto)
+
+        // Costos Reales: Caja + Fonasa + Fondo
+        const cjppuResult = calcularCJPPU()
+        const costosCJPPU = cjppuResult.cajaProfesional
+        const costosFondo = cjppuResult.fondoSolidaridad
+        const costosFonasa = calcularFonasaMensual(ventas.neto).pagoMensualObligatorio
+        const totalAportesFijos = costosCJPPU + costosFonasa + costosFondo
+
+        // Reserva Fiscal Total: (IVA + IRPF + Aportes) - Retenciones ya pagadas
+        // El IRPF Progresivo se mantiene igual para el cálculo del impuesto anual,
+        // pero la "Reserva" (dinero a guardar) disminuye porque la retención ya cubrió parte.
+        const totalReserva = Math.max(0, (ivaAPagar + irpfEstimado + totalAportesFijos) - ventas.retencion)
+
+        // Sueldo Líquido Real: Neto - IRPF - Aportes
+        // Si hay retención, el "Neto Cobrado" fue menor, pero matemáticamente:
+        // (Neto - Retencion) - (IRPF - Retencion) - Aportes = Neto - IRPF - Aportes.
+        // El líquido es el mismo, solo cambia quién tiene la plata (tú o DGI).
+        const sueldoLiquido = ventas.neto - irpfEstimado - totalAportesFijos
+
+        return {
+            totalVentas: ventas,
+            totalCompras: compras,
+            calculosFiscales: {
+                ivaAPagar,
+                irpfEstimado,
+                costosCJPPU,
+                costosFondo,
+                costosFonasa,
+                totalAportesFijos,
+                totalReserva,
+                sueldoLiquido
+            }
+        }
+    }, [invoices, expenses]) // Recalcular solo si cambian facturas o gastos (o fechas implícitamente, aunque `hoy` cambia solo al montar/render)
+
+    const { ivaAPagar, irpfEstimado, costosCJPPU, costosFondo, costosFonasa, totalReserva, sueldoLiquido } = calculosFiscales
+
+    // Función auxiliar para fechas
+    const currentMonthLabel = format(hoy, "MMMM yyyy", { locale: es })
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("es-UY", {
+            style: "currency",
+            currency: "UYU",
+            maximumFractionDigits: 0,
+        }).format(amount)
+    }
+
+    return (
+        <div className="space-y-3">
+            {/* Context Banner */}
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-900/30">
+                <CardContent className="p-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <div>
+                                <div className="text-sm font-semibold text-blue-900 dark:text-blue-100 uppercase tracking-tight">
+                                    Resumen Mensual: {currentMonthLabel}
+                                </div>
+                                <div className="text-[10px] text-blue-700 dark:text-blue-300">
+                                    Bimestre: {bimestreActual.nombre} • Facturas mes: {totalVentas.count}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                            <div className="text-right">
+                                <div className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                                    Vence: {format(proximoVencimiento, "d 'de' MMMM", { locale: es })}
+                                </div>
+                                <Badge
+                                    variant={diasRestantes <= 7 ? "destructive" : diasRestantes <= 15 ? "default" : "secondary"}
+                                    className="text-[10px] h-4 px-1.5"
+                                >
+                                    {diasRestantes} días restantes
+                                </Badge>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Dashboard Cards (Vista Clásica del inicio) */}
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                {/* 1. Ingresos Brutos */}
+                <Card className="bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-900 dark:to-zinc-800 border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3">
+                        <CardTitle className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Ingresos Brutos</CardTitle>
+                        <DollarSign className="h-3.5 w-3.5 text-zinc-500" />
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                        <div className="text-xl font-bold">{formatCurrency(totalVentas.neto)}</div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Sin IVA (Mensual)
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* 2. Reserva Fiscal (La Dolorosa) */}
+                <Card className="bg-red-50/50 dark:bg-red-950/10 border-red-100 dark:border-red-900/30 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3">
+                        <CardTitle className="text-xs font-semibold text-red-700 dark:text-red-300 uppercase tracking-wider">Reserva Fiscal</CardTitle>
+                        <Landmark className="h-3.5 w-3.5 text-red-500" />
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                        <div className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalReserva)}</div>
+
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-1.5 border-t pt-1 border-red-100 dark:border-red-900/30">
+                            <div className="flex justify-between"><span>IVA (Pasamanos):</span> <span className="font-medium text-foreground">{formatCurrency(ivaAPagar)}</span></div>
+                            <div className="flex justify-between"><span>IRPF Mensual:</span> <span className="font-medium text-foreground">{formatCurrency(irpfEstimado)}</span></div>
+
+                            <div className="mt-1 border-t border-red-50 dark:border-red-900/10 pt-0.5 font-semibold text-[9px] uppercase tracking-tighter text-red-800 dark:text-red-400">
+                                Aportes Fijos Obligatorios
+                            </div>
+                            <div className="flex justify-between pl-1"><span>- Caja Profesional:</span> <span className="font-medium text-foreground">{formatCurrency(costosCJPPU)}</span></div>
+                            <div className="flex justify-between pl-1"><span>- Fonasa (Mínimo):</span> <span className="font-medium text-foreground">{formatCurrency(costosFonasa)}</span></div>
+                            <div className="flex justify-between pl-1"><span>- Fondo Solidaridad:</span> <span className="font-medium text-foreground">{formatCurrency(costosFondo)}</span></div>
+                        </div>
+
+                        <div className="mt-1.5 text-[10px] bg-red-100/50 dark:bg-red-950/30 px-2 py-0.5 rounded text-red-800 dark:text-red-200 font-medium">
+                            <div className="flex items-center gap-1">⚠️ Apartar este mes</div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 3. Sueldo Líquido (A la Buchaca) */}
+                <Card className="bg-green-50/50 dark:bg-green-950/10 border-green-100 dark:border-green-900/30 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3">
+                        <CardTitle className="text-xs font-semibold text-green-700 dark:text-green-300 uppercase tracking-wider">Líquido Real</CardTitle>
+                        <PiggyBank className="h-3.5 w-3.5 text-green-500" />
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                        <div className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(sueldoLiquido)}</div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Ya descontados Costos e IRPF
+                        </p>
+                        {totalVentas.neto > 0 && (
+                            <div className="mt-1.5 text-[10px] bg-green-100/50 dark:bg-green-950/30 px-2 py-0.5 rounded text-green-800 dark:text-green-200 inline-block font-medium">
+                                ✅ {((sueldoLiquido / totalVentas.neto) * 100).toFixed(1)}% de rentabilidad
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* 4. IVA Compras (Deducible) */}
+                <Card className="bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-900/30 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 p-3">
+                        <CardTitle className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">IVA Compras</CardTitle>
+                        <ArrowDownRight className="h-3.5 w-3.5 text-blue-500" />
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                        <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalCompras.ivaDeducible)}</div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Mensual descontado
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
+}
+```
+
+### src/components/dashboard/calendar-view.tsx
+```tsx
+"use client"
+
+import { useInvoiceStore } from "@/store/invoices"
+import { useCalendarEventStore } from "@/store/calendar-events"
+import { Calendar } from "@/components/ui/calendar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { EventDialog } from "@/components/calendar/event-dialog"
+import { useState } from "react"
+import { format, isSameDay } from "date-fns"
+import { es } from "date-fns/locale"
+import { getAllTaxDeadlines } from "@/lib/uruguay-taxes"
+import { CalendarDays, CheckCircle2, Circle } from "lucide-react"
+
+export function CalendarView() {
+    const invoices = useInvoiceStore((state) => state.invoices)
+    const { events, toggleCompleted } = useCalendarEventStore()
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [selectedEvent, setSelectedEvent] = useState<any>(null)
+
+    // Get automatic tax deadlines for current year
+    const currentYear = new Date().getFullYear()
+    const taxDeadlines = getAllTaxDeadlines(currentYear)
+
+    // Combine all events for selected date
+    const getEventsForDate = (date: Date | undefined) => {
+        if (!date) return []
+
+        const allEvents = []
+
+        // Add tax deadlines
+        const matchingDeadlines = taxDeadlines.filter(deadline =>
+            isSameDay(deadline.fecha, date)
+        )
+        allEvents.push(...matchingDeadlines.map(d => ({
+            tipo: d.tipo,
+            titulo: d.descripcion,
+            descripcion: undefined,
+            isAutomatic: true,
+            fecha: d.fecha
+        })))
+
+        // Add custom events
+        const customEvents = events.filter(event =>
+            isSameDay(new Date(event.fecha), date)
+        )
+        allEvents.push(...customEvents.map(e => ({
+            ...e,
+            isAutomatic: false
+        })))
+
+        return allEvents
+    }
+
+    // Get all dates that have events
+    const getAllEventDates = () => {
+        const dates = [
+            ...taxDeadlines.map(d => d.fecha),
+            ...events.map(e => new Date(e.fecha))
+        ]
+        return dates
+    }
+
+    const eventDates = getAllEventDates()
+    const selectedDateEvents = getEventsForDate(selectedDate)
+
+    const handleDateSelect = (date: Date | undefined) => {
+        setSelectedDate(date)
+        // Don't auto-open dialog, only when clicking "Add Event" button
+    }
+
+    const handleAddEvent = () => {
+        setSelectedEvent(null)
+        setDialogOpen(true)
+    }
+
+    const handleEditEvent = (event: any) => {
+        if (event.isAutomatic) return // Can't edit automatic events
+        setSelectedEvent(event)
+        setDialogOpen(true)
+    }
+
+    const getEventColor = (tipo: string) => {
+        switch (tipo) {
+            case 'iva-irpf':
+                return 'bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800'
+            case 'bps-cjppu':
+                return 'bg-orange-100 dark:bg-orange-950/30 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-800'
+            case 'personal':
+                return 'bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+            default:
+                return 'bg-gray-100 dark:bg-gray-950/30 text-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-800'
+        }
+    }
+
+    // Calcular fechas por tipo para el resaltado
+    const datesByType = {
+        ivaIrpf: [
+            ...taxDeadlines.filter(d => d.tipo === 'iva-irpf').map(d => d.fecha),
+            ...events.filter(e => e.tipo === 'iva-irpf').map(e => new Date(e.fecha))
+        ],
+        bpsCjppu: [
+            ...taxDeadlines.filter(d => d.tipo === 'bps-cjppu').map(d => d.fecha),
+            ...events.filter(e => e.tipo === 'bps-cjppu').map(e => new Date(e.fecha))
+        ],
+        personal: events.filter(e => e.tipo === 'personal').map(e => new Date(e.fecha)),
+        otro: events.filter(e => e.tipo === 'otro').map(e => new Date(e.fecha)),
+    }
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("es-UY", {
+            style: "currency",
+            currency: "UYU",
+            maximumFractionDigits: 0,
+        }).format(amount)
+    }
+
+    return (
+        <>
+            <div className="grid gap-4 md:grid-cols-[320px_1fr]">
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Calendario Fiscal 2026</CardTitle>
+                        <div className="flex flex-wrap gap-2 pt-2 text-[10px]">
+                            <Badge variant="outline" className="bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-300 border-red-300">
+                                IVA/IRPF
+                            </Badge>
+                            <Badge variant="outline" className="bg-orange-100 dark:bg-orange-950/30 text-orange-800 dark:text-orange-300 border-orange-300">
+                                BPS/CJPPU
+                            </Badge>
+                            <Badge variant="outline" className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 border-blue-300">
+                                Personal
+                            </Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0 flex justify-center pb-3">
+                        <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={handleDateSelect}
+                            modifiers={{
+                                ivaIrpf: datesByType.ivaIrpf,
+                                bpsCjppu: datesByType.bpsCjppu,
+                                personal: datesByType.personal,
+                                otro: datesByType.otro,
+                            }}
+                            modifiersClassNames={{
+                                ivaIrpf: "bg-red-100 text-red-900 font-bold dark:bg-red-900/50 dark:text-red-100",
+                                bpsCjppu: "bg-orange-100 text-orange-900 font-bold dark:bg-orange-900/50 dark:text-orange-100",
+                                personal: "bg-blue-100 text-blue-900 font-bold dark:bg-blue-900/50 dark:text-blue-100",
+                                otro: "bg-gray-100 text-gray-900 font-bold dark:bg-gray-800 dark:text-gray-100"
+                            }}
+                            className="rounded-md border-0"
+                            locale={es}
+                        />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">
+                                {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM, yyyy", { locale: es }) : "Selecciona una fecha"}
+                            </CardTitle>
+                            {selectedDate && (
+                                <Button size="sm" onClick={handleAddEvent} className="h-8">
+                                    + Evento
+                                </Button>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {selectedDateEvents.length > 0 ? (
+                            <div className="space-y-2">
+                                {selectedDateEvents.map((event, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`p-3 rounded-lg border ${getEventColor(event.tipo)} ${!event.isAutomatic ? 'cursor-pointer hover:opacity-80' : ''}`}
+                                        onClick={() => !event.isAutomatic && handleEditEvent(event)}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <CalendarDays className="h-3.5 w-3.5" />
+                                                    <span className="font-semibold text-sm">{event.titulo}</span>
+                                                </div>
+                                                {event.descripcion && (
+                                                    <p className="text-xs mt-1 opacity-80">{event.descripcion}</p>
+                                                )}
+                                                {!event.isAutomatic && 'monto' in event && event.monto && (
+                                                    <p className="text-xs mt-1 font-medium">
+                                                        Monto: {formatCurrency(event.monto)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {!event.isAutomatic && 'id' in event && 'completado' in event && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        if ('id' in event) {
+                                                            toggleCompleted(event.id)
+                                                        }
+                                                    }}
+                                                    className="flex-shrink-0"
+                                                >
+                                                    {event.completado ? (
+                                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                                    ) : (
+                                                        <Circle className="h-5 w-5 opacity-50" />
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                        {event.isAutomatic && (
+                                            <Badge variant="secondary" className="text-[10px] mt-2">
+                                                Vencimiento Automático
+                                            </Badge>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col h-[300px] items-center justify-center text-muted-foreground text-center">
+                                <CalendarDays className="h-12 w-12 mb-3 opacity-20" />
+                                <p className="text-sm">No hay eventos este día</p>
+                                {selectedDate && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-4"
+                                        onClick={handleAddEvent}
+                                    >
+                                        Agregar Evento
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            <EventDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                selectedDate={selectedDate || null}
+                existingEvent={selectedEvent}
+            />
+        </>
+    )
+}
+```
+
+### src/components/mode-toggle.tsx
+```tsx
+"use client"
+
+import * as React from "react"
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
+
+import { Button } from "@/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
+export function ModeToggle() {
+    const { setTheme } = useTheme()
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                    <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                    <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    <span className="sr-only">Toggle theme</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setTheme("light")}>
+                    Light
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    Dark
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("system")}>
+                    System
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
+}
+```
+
+### src/components/notifications/notifications.tsx
+```tsx
+"use client"
+
+import { useEffect } from "react"
+import { useInvoiceStore } from "@/store/invoices"
+import { toast } from "sonner"
+import { addMonths, setDate } from "date-fns"
+import { TAX_CONSTANTS_2026 } from "@/lib/uruguay-taxes"
+
+export function Notifications() {
+    const invoices = useInvoiceStore((state) => state.invoices)
+
+    useEffect(() => {
+        const today = new Date()
+        const currentDay = today.getDate()
+
+        // Alertas Proactivas (48hs antes)
+
+        // 1. BPS (Fonasa) - Vence el 15 (o próximo hábil)
+        // Alerta entre 13 y 15
+        if (currentDay >= 13 && currentDay <= 15) {
+            toast.warning("Vencimiento BPS (Fonasa)", {
+                description: `Recuerda pagar el anticipo mensual (~$${TAX_CONSTANTS_2026.CPE_MINIMO}) antes del 15.`,
+                duration: 8000,
+                id: 'bps-alert'
+            })
+        }
+
+        // 2. DGI (IVA/IRPF) - Vence el 25 (Bimestral o Mensual)
+        // Asumimos mensual para alerta general
+        if (currentDay >= 23 && currentDay <= 25) {
+            // Calcular IVA a pagar del mes anterior (aprox con facturas)
+            // Esto es solo un recordatorio visual.
+            toast.error("Vencimiento DGI (IVA/IRPF)", {
+                description: `Prepara la declaración jurada. Vence el día 25.`,
+                duration: 8000,
+                id: 'dgi-alert'
+            })
+        }
+
+        // 3. CJPPU (Caja) - Vence el 30/31
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+        if (currentDay >= lastDayOfMonth - 2) {
+            toast.info("Vencimiento Caja Profesional", {
+                description: `No te olvides del aporte a la Caja antes de fin de mes.`,
+                duration: 8000,
+                id: 'cjppu-alert'
+            })
+        }
+
+    }, [invoices])
+
+    return null
+}
+```
+
+### src/lib/uruguay-taxes.ts
+```tsx
+export const TAX_CONSTANTS_2026 = {
+    BPC: 6864, // Base de Prestaciones y Contribuciones estimada 2026
+    CPE_MINIMO: 5020, // FONASA Mínimo Obligatorio 2026 (sin hijos ni pareja)
+    CJPPU_ESCALON_10_MONTO: 7566, // Caja Profesional Escala 10 - Monto fijo mensual 2026
+    CJPPU_ESCALON_10_ABATIDO: 6828, // Opción con fictos abatidos
+    FONDO_SOLIDARIDAD: 1200, // Mensual promedio (incluido en CJPPU_ESCALON_10_MONTO)
+    IVA_BASIC_RATE: 0.22,
+    IVA_MIN_RATE: 0.10,
+}
+
+export function calcularIVA(monto: number, tasa: number = TAX_CONSTANTS_2026.IVA_BASIC_RATE) {
+    return monto * tasa
+}
+
+/**
+ * Calcula el IRPF mensual estimado (anticipo)
+ * @param ingresosBrutosSum Monthly sum of net income (without VAT)
+ */
+export function calcularIRPFMensual(ingresosBrutosMes: number) {
+    // Anticipo bimestral es sobre el 70% de ingresos brutos.
+    // Aquí calculamos una proyección mensual.
+
+    const rentaComputable = ingresosBrutosMes * 0.70
+
+    // Escala IRPF anualizada paso a mensual (aprox para estimación)
+    // Franjas 2025/2026 (en BPC Mensual)
+    // 0 - 7 BPC: 0%
+    // 7 - 10 BPC: 10%
+    // 10 - 15 BPC: 15%
+    // 15 - 30 BPC: 24%
+    // 30 - 50 BPC: 25%
+    // 50 - 75 BPC: 27%
+    // 75 - 115 BPC: 31%
+    // > 115 BPC: 36%
+
+    const BPC = TAX_CONSTANTS_2026.BPC
+    let impuesto = 0
+    let remanente = rentaComputable
+
+    // Franja 1: 0 - 7 BPC (Exento)
+    const franja1 = 7 * BPC
+    if (remanente > franja1) {
+        remanente -= franja1
+    } else {
+        return 0
+    }
+
+    // Franja 2: 7 - 10 BPC (10%)
+    const franja2 = 3 * BPC // (10 - 7)
+    const taxable2 = Math.min(remanente, franja2)
+    impuesto += taxable2 * 0.10
+    remanente -= taxable2
+    if (remanente <= 0) return impuesto
+
+    // Franja 3: 10 - 15 BPC (15%)
+    const franja3 = 5 * BPC // (15 - 10)
+    const taxable3 = Math.min(remanente, franja3)
+    impuesto += taxable3 * 0.15
+    remanente -= taxable3
+    if (remanente <= 0) return impuesto
+
+    // Franja 4: 15 - 30 BPC (24%)
+    const franja4 = 15 * BPC // (30 - 15)
+    const taxable4 = Math.min(remanente, franja4)
+    impuesto += taxable4 * 0.24
+    remanente -= taxable4
+    if (remanente <= 0) return impuesto
+
+    // Franja 5: 30 - 50 BPC (25%)
+    const franja5 = 20 * BPC
+    const taxable5 = Math.min(remanente, franja5)
+    impuesto += taxable5 * 0.25
+    remanente -= taxable5
+    if (remanente <= 0) return impuesto
+
+    // Franja 6: 50 - 75 BPC (27%)
+    const franja6 = 25 * BPC
+    const taxable6 = Math.min(remanente, franja6)
+    impuesto += taxable6 * 0.27
+    remanente -= taxable6
+    if (remanente <= 0) return impuesto
+
+    // Franja 7: 75 - 115 BPC (31%)
+    const franja7 = 40 * BPC
+    const taxable7 = Math.min(remanente, franja7)
+    impuesto += taxable7 * 0.31
+    remanente -= taxable7
+    if (remanente <= 0) return impuesto
+
+    // Franja 8: > 115 BPC (36%)
+    impuesto += remanente * 0.36
+
+    return impuesto
+}
+
+export function calcularFonasaMensual(ingresosBrutosMensuales: number, tieneHijos: boolean = false, tieneConyuge: boolean = false) {
+    // Pago mensual obligatorio: Mínimo 2026 = $5.020
+    // Tasa: 4.5% sobre el 70% de facturación (sin hijos ni pareja)
+    // Pero si no llega al mínimo, se paga el mínimo
+
+    const tasaBase = 0.045 // 4.5% para caso sin hijos ni pareja
+    const tasaAdicional = (tieneHijos ? 0.015 : 0) + (tieneConyuge ? 0.02 : 0)
+    const tasaTotal = tasaBase + tasaAdicional
+
+    const baseFonasa = ingresosBrutosMensuales * 0.70 // 70% de facturación
+    const costoCalculado = baseFonasa * tasaTotal
+
+    // El pago mensual es el mayor entre el calculado y el mínimo
+    const pagoMensualObligatorio = Math.max(costoCalculado, TAX_CONSTANTS_2026.CPE_MINIMO)
+
+    return {
+        pagoMensualObligatorio, // Lo que realmente pagas cada mes
+        costoCalculado,         // Lo que sale según el cálculo
+        minimoLegal: TAX_CONSTANTS_2026.CPE_MINIMO,
+        diferencia: 0 // Simplificado - ya no calculamos deuda anual
+    }
+}
+
+export function calcularCJPPU(usarAbatido: boolean = false) {
+    // Escala 10 - Monto fijo mensual
+    const montoMensual = usarAbatido ? TAX_CONSTANTS_2026.CJPPU_ESCALON_10_ABATIDO : TAX_CONSTANTS_2026.CJPPU_ESCALON_10_MONTO
+    const fondoSolidaridad = TAX_CONSTANTS_2026.FONDO_SOLIDARIDAD
+
+    return {
+        cajaProfesional: montoMensual,
+        fondoSolidaridad: fondoSolidaridad,
+        total: montoMensual + fondoSolidaridad
+    }
+}
+
+// ============================================
+// UTILIDADES DE CICLO BIMESTRAL
+// ============================================
+
+export interface BimestreInfo {
+    numero: number           // 0-5 (0=Ene-Feb, 1=Mar-Abr, ...)
+    nombre: string          // "Ene-Feb", "Mar-Abr", etc
+    mesInicio: number       // 0-11 (mes inicial del bimestre)
+    mesFin: number          // 0-11 (mes final del bimestre)
+    anio: number            // Año del bimestre
+}
+
+/**
+ * Determina el bimestre actual basado en una fecha
+ * En Uruguay, IVA e IRPF se pagan bimestralmente
+ */
+export function getBimestreActual(fecha: Date = new Date()): BimestreInfo {
+    const mes = fecha.getMonth() // 0-11
+    const anio = fecha.getFullYear()
+    const bimestre = Math.floor(mes / 2) // 0-5
+
+    const nombres = ['Ene-Feb', 'Mar-Abr', 'May-Jun', 'Jul-Ago', 'Sep-Oct', 'Nov-Dic']
+
+    return {
+        numero: bimestre,
+        nombre: nombres[bimestre],
+        mesInicio: bimestre * 2,
+        mesFin: bimestre * 2 + 1,
+        anio
+    }
+}
+
+/**
+ * Calcula la fecha del próximo vencimiento de IVA/IRPF
+ * Vence el día 25 de los meses impares (Enero, Marzo, Mayo, Julio, Septiembre, Noviembre)
+ */
+export function getProximoVencimiento(fecha: Date = new Date()): Date {
+    const mesActual = fecha.getMonth() // 0-11
+    const anioActual = fecha.getFullYear()
+    const diaActual = fecha.getDate()
+
+    // Meses impares: 0 (Enero), 2 (Marzo), 4 (Mayo), 6 (Julio), 8 (Sep), 10 (Nov)
+    const mesesVencimiento = [0, 2, 4, 6, 8, 10]
+
+    // Encontrar el próximo mes de vencimiento
+    let proximoMes = mesesVencimiento.find(m => {
+        if (m > mesActual) return true
+        if (m === mesActual && diaActual < 25) return true
+        return false
+    })
+
+    // Si no hay próximo vencimiento en este año, el próximo es enero del año siguiente
+    if (proximoMes === undefined) {
+        return new Date(anioActual + 1, 0, 25) // 25 de enero del año siguiente
+    }
+
+    return new Date(anioActual, proximoMes, 25)
+}
+
+/**
+ * Verifica si una factura pertenece a un bimestre específico
+ */
+export function facturaEnBimestre(fechaFactura: Date, bimestre: BimestreInfo): boolean {
+    const mesFactura = fechaFactura.getMonth()
+    const anioFactura = fechaFactura.getFullYear()
+
+    return anioFactura === bimestre.anio &&
+        mesFactura >= bimestre.mesInicio &&
+        mesFactura <= bimestre.mesFin
+}
+
+/**
+ * Calcula días restantes hasta el próximo vencimiento
+ */
+export function diasHastaVencimiento(fecha: Date = new Date()): number {
+    const proximoVencimiento = getProximoVencimiento(fecha)
+    const hoy = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()) // Reset time to midnight
+    const vencimiento = new Date(proximoVencimiento.getFullYear(), proximoVencimiento.getMonth(), proximoVencimiento.getDate())
+
+    const diff = vencimiento.getTime() - hoy.getTime()
+    return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+// ============================================
+// DATOS DEL USUARIO (Hardcoded para MVP)
+// ============================================
+export const TAX_USER_DATA = {
+    RUT: "220674720013",
+    CI: "3.921.045-8",
+    digitoRUT: 3
+}
+
+// ============================================
+// VENCIMIENTOS AUTOMÁTICOS PARA CALENDARIO
+// ============================================
+
+export interface TaxDeadline {
+    fecha: Date
+    tipo: 'iva-irpf' | 'bps-cjppu'
+    descripcion: string
+}
+
+/**
+ * Fechas exactas de vencimiento DGI 2026 para Servicios Personales (Bimestral)
+ * Fuente: Calendario DGI 2026 (Resolución 2284/025)
+ * Estos vencimientos no dependen del dígito para Servicios Personales (Regla General)
+ */
+export function getVencimientosIvaIrpf(anio: number = new Date().getFullYear()): TaxDeadline[] {
+    // Si no es 2026, devolvemos estimación general (25 de meses impares)
+    if (anio !== 2026) {
+        const mesesImpares = [0, 2, 4, 6, 8, 10]
+        return mesesImpares.map(mes => ({
+            fecha: new Date(anio, mes, 25),
+            tipo: 'iva-irpf' as const,
+            descripcion: 'Pago Bimensual IVA Fijo / IRPF (Estimado)'
+        }))
+    }
+
+    // Fechas Exactas 2026
+    const fechas = [
+        new Date(2026, 0, 26),  // Ene 26 (Nov-Dic 25)
+        new Date(2026, 2, 25),  // Mar 25 (Ene-Feb 26)
+        new Date(2026, 4, 25),  // May 25 (Mar-Abr 26)
+        new Date(2026, 6, 27),  // Jul 27 (May-Jun 26) - Lunes (25 fue sábado)
+        new Date(2026, 8, 25),  // Sep 25 (Jul-Ago 26)
+        new Date(2026, 10, 25), // Nov 25 (Sep-Oct 26)
+    ]
+
+    return fechas.map(fecha => ({
+        fecha,
+        tipo: 'iva-irpf' as const,
+        descripcion: 'Pago Bimensual IVA Fijo / IRPF'
+    }))
+}
+
+/**
+ * Vencimientos CJPPU (Caja Profesionales)
+ * Vence el último día hábil del mes siguiente al cargo.
+ */
+export function getVencimientosCJPPU(anio: number = new Date().getFullYear()): TaxDeadline[] {
+    // Generar vencimientos para los 12 meses
+    // Enero se paga a fin de Febrero, etc.
+    const deadlines: TaxDeadline[] = []
+
+    for (let mes = 0; mes < 12; mes++) {
+        // Fin de mes del mes actual (que corresponde al pago del mes anterior)
+        // Ejemplo: Estamos en Febrero 2026. Vence el pago de Enero.
+        // La fecha de vencimiento es el último día de Febrero.
+        // new Date(anio, mes + 1, 0) da el último día del mes 'mes'
+
+        const fechaVencimiento = new Date(anio, mes + 1, 0) // Último día del mes
+
+        deadlines.push({
+            fecha: fechaVencimiento,
+            tipo: 'bps-cjppu' as const,
+            descripcion: 'Vencimiento CJPPU (Fondo + Caja)'
+        })
+    }
+
+    return deadlines
+}
+
+/**
+ * Vencimientos BPS (Fonasa Servicios Personales)
+ * Vencimiento aproximado: 25 de cada mes (para el mes anterior)
+ */
+export function getVencimientosBPS(anio: number = new Date().getFullYear()): TaxDeadline[] {
+    const meses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+    return meses.map(mes => ({
+        fecha: new Date(anio, mes, 25), // Mantener 25 como referencia segura
+        tipo: 'bps-cjppu' as const,
+        descripcion: 'Vencimiento Fonasa'
+    }))
+}
+
+/**
+ * Obtiene todos los vencimientos fiscales para un año
+ */
+export function getAllTaxDeadlines(anio: number = new Date().getFullYear()): TaxDeadline[] {
+    return [
+        ...getVencimientosIvaIrpf(anio),
+        ...getVencimientosCJPPU(anio),
+        ...getVencimientosBPS(anio)
+    ]
+}
+```
+
+### src/lib/utils.ts
+```tsx
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+```
+
+### src/lib/ocr-parser.ts
+```tsx
+
+export interface ExtractedData {
+    fecha?: Date;
+    rut?: string;
+    montoTotal?: number;
+    iva?: number;
+    posibleProveedor?: string;
+}
+
+export function parseInvoiceText(text: string): ExtractedData {
+    const lines = text.split('\n');
+    const data: ExtractedData = {};
+
+    // 1. Buscando Fecha
+    // Patrones: DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY
+    const datePattern = /(\d{2})[\/\-](\d{2})[\/\-](\d{4})|(\d{4})[\/\-](\d{2})[\/\-](\d{2})/;
+    const dateMatch = text.match(datePattern);
+
+    if (dateMatch) {
+        // Intentar construir fecha
+        try {
+            if (dateMatch[1]) {
+                // DD/MM/YYYY
+                const day = parseInt(dateMatch[1]);
+                const month = parseInt(dateMatch[2]) - 1;
+                const year = parseInt(dateMatch[3]);
+                data.fecha = new Date(year, month, day);
+            } else {
+                // YYYY-MM-DD
+                const year = parseInt(dateMatch[4]);
+                const month = parseInt(dateMatch[5]) - 1;
+                const day = parseInt(dateMatch[6]);
+                data.fecha = new Date(year, month, day);
+            }
+        } catch (e) {
+            console.error("Error parsing date", e);
+        }
+    }
+
+    // 2. Buscando RUT (12 dígitos, a veces con espacios o guiones)
+    // UTE: 21xxxxxx001x Antel: 21xxxxxx001x
+    const rutPattern = /\b21\d{10}\b/; // Simplificado para UY 21...
+    const rutMatch = text.match(rutPattern);
+    if (rutMatch) {
+        data.rut = rutMatch[0];
+    }
+
+    // 3. Buscando Montos
+    // Buscar linea con "Total" o "Importe Total" y un numero
+    // Regex para moneda UY:  $ 1.234,56 o 1234.56
+
+    // Estrategia: Buscar "Total" y tomar el primer numero que aparezca despues en la misma linea o la siguiente.
+    const totalPattern = /(?:Total|TOTAL|Importe Total)[\s\S]{0,20}?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))/;
+    const totalMatch = text.match(totalPattern);
+
+    if (totalMatch) {
+        // Limpiar numero: quitar puntos de miles, cambiar coma decimal por punto (si es UY).
+        // Asumimos formato español: 1.234,56 -> 1234.56
+        let imp = totalMatch[1].replace(/\./g, '').replace(',', '.');
+        data.montoTotal = parseFloat(imp);
+    } else {
+        // Fallback: Buscar el numero más grande en el texto (arriesgado pero útil)
+        // O buscar "IVA" y calcular reverso.
+    }
+
+    // 4. Proveedor (Heurística simple por palabras clave)
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('ute') || lowerText.includes('usinas')) data.posibleProveedor = 'UTE';
+    else if (lowerText.includes('antel')) data.posibleProveedor = 'Antel';
+    else if (lowerText.includes('ose')) data.posibleProveedor = 'OSE';
+
+    return data;
+}
+```
+
+### src/store/invoices.ts
+```tsx
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { Factura } from '@/types';
+
+interface InvoiceState {
+    invoices: Factura[];
+    addInvoice: (invoice: Omit<Factura, 'id'>) => void;
+    removeInvoice: (id: string) => void;
+    updateInvoice: (id: string, invoice: Partial<Factura>) => void;
+}
+
+export const useInvoiceStore = create<InvoiceState>()(
+    persist(
+        (set) => ({
+            invoices: [],
+            addInvoice: (invoice) =>
+                set((state) => ({
+                    invoices: [
+                        ...state.invoices,
+                        { ...invoice, id: crypto.randomUUID() },
+                    ],
+                })),
+            removeInvoice: (id) =>
+                set((state) => ({
+                    invoices: state.invoices.filter((inv) => inv.id !== id),
+                })),
+            updateInvoice: (id, updatedInvoice) =>
+                set((state) => ({
+                    invoices: state.invoices.map((inv) =>
+                        inv.id === id ? { ...inv, ...updatedInvoice } : inv
+                    ),
+                })),
+        }),
+        {
+            name: 'invoice-storage',
+        }
+    )
+);
+```
+
+### src/store/calendar-events.ts
+```tsx
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export type EventType = 'iva-irpf' | 'bps-cjppu' | 'personal' | 'otro'
+
+export interface CalendarEvent {
+    id: string
+    titulo: string
+    descripcion?: string
+    fecha: Date
+    tipo: EventType
+    monto?: number
+    completado?: boolean
+}
+
+interface CalendarEventStore {
+    events: CalendarEvent[]
+    addEvent: (event: Omit<CalendarEvent, 'id'>) => void
+    updateEvent: (id: string, event: Partial<CalendarEvent>) => void
+    removeEvent: (id: string) => void
+    getEventsForDate: (date: Date) => CalendarEvent[]
+    toggleCompleted: (id: string) => void
+}
+
+export const useCalendarEventStore = create<CalendarEventStore>()(
+    persist(
+        (set, get) => ({
+            events: [],
+
+            addEvent: (event) => {
+                const newEvent: CalendarEvent = {
+                    ...event,
+                    id: crypto.randomUUID(),
+                    fecha: new Date(event.fecha) // Ensure it's a Date object
+                }
+                set((state) => ({ events: [...state.events, newEvent] }))
+            },
+
+            updateEvent: (id, updates) => {
+                set((state) => ({
+                    events: state.events.map(event =>
+                        event.id === id ? { ...event, ...updates } : event
+                    )
+                }))
+            },
+
+            removeEvent: (id) => {
+                set((state) => ({
+                    events: state.events.filter(event => event.id !== id)
+                }))
+            },
+
+            getEventsForDate: (date) => {
+                const events = get().events
+                return events.filter(event => {
+                    const eventDate = new Date(event.fecha)
+                    return eventDate.getDate() === date.getDate() &&
+                        eventDate.getMonth() === date.getMonth() &&
+                        eventDate.getFullYear() === date.getFullYear()
+                })
+            },
+
+            toggleCompleted: (id) => {
+                set((state) => ({
+                    events: state.events.map(event =>
+                        event.id === id ? { ...event, completado: !event.completado } : event
+                    )
+                }))
+            }
+        }),
+        {
+            name: 'calendar-events-storage',
+            // Serialize dates properly
+            partialize: (state) => ({ events: state.events }),
+        }
+    )
+)
+```
+
+### src/store/expenses.ts
+```tsx
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+export interface Gasto {
+    id: string;
+    fecha: Date;
+    descripcion: string;
+    proveedor: string;
+    montoTotal: number;
+    tasaIva: 0.22 | 0.10 | 0;
+    ivaDeducible: number;
+    categoria: 'Oficina' | 'Equipos' | 'Servicios' | 'Otros';
+}
+
+interface ExpenseState {
+    gastos: Gasto[];
+    addGasto: (gasto: Omit<Gasto, 'id' | 'ivaDeducible'>) => void;
+    removeGasto: (id: string) => void;
+}
+
+export const useExpenseStore = create<ExpenseState>()(
+    persist(
+        (set) => ({
+            gastos: [],
+            addGasto: (gasto) => {
+                const iva = gasto.montoTotal - (gasto.montoTotal / (1 + gasto.tasaIva));
+                set((state) => ({
+                    gastos: [
+                        ...state.gastos,
+                        {
+                            ...gasto,
+                            id: crypto.randomUUID(),
+                            ivaDeducible: iva
+                        },
+                    ],
+                }));
+            },
+            removeGasto: (id) =>
+                set((state) => ({
+                    gastos: state.gastos.filter((g) => g.id !== id),
+                })),
+        }),
+        {
+            name: 'expense-storage',
+        }
+    )
+);
+```
+
