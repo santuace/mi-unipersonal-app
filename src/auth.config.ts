@@ -1,18 +1,26 @@
 import type { NextAuthConfig } from "next-auth"
-import Google from "next-auth/providers/google"
+import Credentials from "next-auth/providers/credentials"
 
 export const authConfig = {
     providers: [
-        Google({
-            authorization: {
-                params: {
-                    prompt: "consent",
-                    access_type: "offline",
-                    response_type: "code",
-                    scope: "openid email profile https://www.googleapis.com/auth/calendar.events"
+        Credentials({
+            credentials: {
+                username: { label: "Usuario", type: "text" },
+                password: { label: "Contraseña", type: "password" }
+            },
+            async authorize(credentials) {
+                // Simple hardcoded user for now
+                // In production, you'd check against a database
+                if (credentials?.username === "admin" && credentials?.password === "admin123") {
+                    return {
+                        id: "1",
+                        name: "Administrador",
+                        email: "admin@unipersonal.com"
+                    }
                 }
+                return null
             }
-        }),
+        })
     ],
     pages: {
         signIn: "/login",
