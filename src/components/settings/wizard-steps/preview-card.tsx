@@ -82,7 +82,7 @@ export function PreviewCard({ config }: PreviewCardProps) {
     const formatMoney = (amount: number) => new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU", maximumFractionDigits: 0 }).format(amount)
 
     return (
-        <Card className="h-full bg-slate-50 dark:bg-slate-900 border-l-4 border-l-blue-500 shadow-md">
+        <Card className="w-full bg-white dark:bg-slate-900 border-l-4 border-l-blue-600 shadow-lg ring-1 ring-slate-900/5">
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Resumen de Costos Fijos
