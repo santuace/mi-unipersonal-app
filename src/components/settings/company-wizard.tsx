@@ -195,7 +195,7 @@ export function CompanyWizard({ isOnboarding = false }: CompanyWizardProps) {
                     </div>
 
                     {/* Step Content with Animation */}
-                    <div className="relative overflow-hidden min-h-[400px] border rounded-xl p-6 shadow-sm bg-card">
+                    <div className="relative overflow-hidden border rounded-xl p-6 shadow-sm bg-card">
                         <AnimatePresence mode="wait" custom={direction}>
                             <motion.div
                                 key={currentStep}
