@@ -13,6 +13,20 @@ export async function saveCompanySettings(data: CompanyConfig) {
     }
 
     try {
+        // Ensure user exists (since we are using hardcoded credentials with ID "1")
+        const userExists = await prisma.user.findUnique({
+            where: { id: session.user.id }
+        })
+
+        if (!userExists) {
+            await prisma.user.create({
+                data: {
+                    id: session.user.id,
+                    name: session.user.name || "Admin",
+                    email: session.user.email || "admin@example.com"
+                }
+            })
+        }
         await prisma.companyConfig.upsert({
             where: {
                 userId: session.user.id
