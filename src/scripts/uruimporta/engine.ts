@@ -1,8 +1,9 @@
 import 'dotenv/config';
-import { CATALOG, PUBLICATION_HISTORY } from "./data/mock-data";
 import { Context, EngineOutput, HistoryItem, Product, ScoredProduct } from "./types";
-import { buildEmailHtml } from "./templates/html-builder"; // [NEW]
-import { sendEmail, MailConfig } from "./mailer"; // [NEW]
+import { loadHistory, saveHistory } from "./data/historyManager";
+import axios from 'axios';
+import { buildEmailHtml } from "./templates/html-builder";
+import { sendEmail, MailConfig } from "./mailer";
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
@@ -32,6 +33,58 @@ interface DayTheme {
 }
 
 // --- Helper Functions ---
+
+async function fetchWooCommerceProducts(): Promise<Product[]> {
+    console.log(">>> Consultando catálogo en vivo de Uruimporta (WooCommerce API)...");
+
+    if (!process.env.WC_CONSUMER_KEY || !process.env.WC_CONSUMER_SECRET || !process.env.WC_URL) {
+        console.warn("⚠️ Advertencia: Claves de WooCommerce no encontradas en .env. Por favor, configúralas.");
+        return [];
+    }
+
+    try {
+        const url = `${process.env.WC_URL}/wp-json/wc/v3/products`;
+        const response = await axios.get(url, {
+            params: {
+                consumer_key: process.env.WC_CONSUMER_KEY,
+                consumer_secret: process.env.WC_CONSUMER_SECRET,
+                per_page: 100, // Fetch top 100 for now
+                status: 'publish',
+                stock_status: 'instock'
+            }
+        });
+
+        const wcProducts = response.data;
+        const catalog: Product[] = wcProducts.map((p: any) => {
+            // Flatten categories/tags into string arrays
+            const tagNames = p.tags ? p.tags.map((t: any) => t.name.toLowerCase()) : [];
+            const catNames = p.categories ? p.categories.map((c: any) => c.name) : [];
+            const mainCat = catNames.length > 0 ? catNames[0] : 'General';
+            const subCat = catNames.length > 1 ? catNames[1] : undefined;
+
+            return {
+                sku: p.sku || `WC-${p.id}`,
+                nombre_producto: p.name,
+                precio: Number(p.price) || 0,
+                categoria: mainCat,
+                subcategoria: subCat,
+                estado: 'ACTIVO',
+                stock: p.stock_quantity || 10,
+                promo: p.on_sale,
+                novedad: false, // WooCommerce doesn't have native "new" flag simply, keeping false for now
+                url_producto: p.permalink,
+                url_imagen: p.images && p.images.length > 0 ? p.images[0].src : '',
+                tags: tagNames
+            };
+        });
+
+        console.log(`✅ Catálogo cargado: ${catalog.length} productos listos para procesar.`);
+        return catalog;
+    } catch (error) {
+        console.error("❌ Error conectando a WooCommerce:", error);
+        return [];
+    }
+}
 
 function getDynamicContext(): Context {
     const today = new Date();
@@ -230,7 +283,23 @@ async function runEngine() {
     console.log(`>>> TEMA DEL DÍA: ${theme.name} (${theme.type})`);
     console.log(`>>> CLIMA: ${dynamicContext.clima.descripcion} | TENDENCIAS: ${dynamicContext.tendencias.join(', ')}`);
 
-    const scoredProducts = CATALOG.map(p => calculateScore(p, dynamicContext, PUBLICATION_HISTORY));
+    // 1. Load Data
+    const rawCatalog = await fetchWooCommerceProducts();
+    const history = loadHistory();
+
+    // 2. Filter out products sent in the last 15 days entirely (Strict Anti-Repetition)
+    const recentHistorySkus = new Set(
+        history.filter(h => {
+            const daysAgo = Math.floor((dynamicContext.fecha.getTime() - h.fecha_publicacion.getTime()) / (1000 * 3600 * 24));
+            return daysAgo <= 15;
+        }).map(h => h.sku)
+    );
+    const availableCatalog = rawCatalog.filter(p => !recentHistorySkus.has(p.sku));
+
+    console.log(`>>> Filtrando catálogo: ${availableCatalog.length} productos disponibles (excluyendo enviados recientemente).`);
+
+    // 3. Score and Select
+    const scoredProducts = availableCatalog.map(p => calculateScore(p, dynamicContext, history));
     const selected = selectProducts(scoredProducts, theme);
 
     if (selected.length < 5) {
@@ -317,6 +386,15 @@ async function runEngine() {
 
             console.log("📧 Proceso de envío finalizado con éxito.");
             console.log("📨 Message ID: %s", info.messageId);
+
+            // Save history
+            const newHistoryItems: HistoryItem[] = selected.map(p => ({
+                sku: p.sku,
+                fecha_publicacion: dynamicContext.fecha,
+                categoria: p.categoria,
+                score_historico: p.score
+            }));
+            saveHistory(newHistoryItems);
 
             if (isTestAccount) {
                 console.log("\n✨ VISUALIZAR EMAIL ENVIADO AQUÍ:");
