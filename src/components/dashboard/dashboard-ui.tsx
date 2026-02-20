@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 
 import { InvoiceForm } from "@/components/invoices/invoice-form"
 import { InvoiceList } from "@/components/invoices/invoice-list"
@@ -49,6 +50,10 @@ export function DashboardUI() {
                 </div>
                 <div className="flex items-center gap-2">
                     <ModeToggle />
+
+                    <Button variant="ghost" size="sm" asChild>
+                        <Link href="/expenses">Ir a Gastos</Link>
+                    </Button>
 
                     <Dialog open={openExpense} onOpenChange={setOpenExpense}>
                         <DialogTrigger asChild>
