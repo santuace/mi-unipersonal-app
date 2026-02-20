@@ -1,0 +1,32 @@
+name: Uruimporta Daily Editorial
+
+on:
+  schedule:
+    - cron: '0 11 * * *' # 11:00 AM UTC -> 8:00 AM Uruguay
+  workflow_dispatch:
+
+jobs:
+  run-editorial-engine:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run Editorial Engine and Send Email
+      run: npx tsx src/scripts/uruimporta/engine.ts --send
+      env:
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        EMAIL_TO: ${{ secrets.EMAIL_TO }}
