@@ -117,6 +117,21 @@ const app = {
             // Always reset to first tab when entering the lab
             this.switchLabTab('focus');
         }
+        // Auto-fill client name in tools that have a client field
+        if (viewId === 'brief-maker') {
+            const clientField = document.getElementById('bm-client');
+            if (clientField && !clientField.value) {
+                const client = this.getCurrentClient();
+                if (client) clientField.value = client.name;
+            }
+        }
+        if (viewId === 'pnt-maker') {
+            const clientField = document.getElementById('pnt-client');
+            if (clientField && !clientField.value) {
+                const client = this.getCurrentClient();
+                if (client) clientField.value = client.name;
+            }
+        }
     },
 
     updateBreadcrumb(viewId) {
@@ -471,9 +486,12 @@ const app = {
 
     async generateBrief() {
         const data = this.getBriefFormData();
+        const clientCtx = this.getClientContextPrompt();
         const prompt = `
                 Actúa como un Director General Creativo. Transforma la siguiente información en un Brief Estratégico inspirador de 6 puntos.
                 Usa negritas para resaltar títulos y bullets para listar. Hazlo sonar profesional, estratégico y muy creativo, listo para entregarse a la agencia.
+                Si hay contexto de cliente disponible, respetá su tono y pilares de marca al 100%.
+                ${clientCtx}
 
                 INFORMACIÓN BASE:
                 ${data}
@@ -568,18 +586,21 @@ const app = {
     async analyzeContent() {
         const context = document.getElementById('an-context').value;
         const text = document.getElementById('an-text').value;
+        const clientCtx = this.getClientContextPrompt();
 
         let payload = {
             prompt: `
                 Actúa como un Director Estratégico de una gran agencia creativa. Usa tu máximo rigor analítico.
                 Analiza el contenido provisto para este contexto/audiencia: "${context}".
                 Genera un informe estructurado con 4 puntajes sobre 10, y una sección final de recomendaciones.
-                
+                Si hay contexto de cliente disponible, evaluá también qué tan alineado está el contenido con el tono y pilares de la marca.
+                ${clientCtx}
+
                 1. **Performance Predictiva**: (1-10) ${text ? 'Basado en el copy' : ''}
                 2. **Targeting**: (1-10) ¿Resuena con la audiencia?
-                3. **Tono y Voz**: (1-10)
+                3. **Tono y Voz**: (1-10) — evaluá fit con la marca si hay contexto
                 4. **Call To Action (CTA)**: (1-10)
-                
+
                 Contenido de texto adjunto (si aplica): "${text}"
             `
         };
@@ -654,17 +675,20 @@ const app = {
     },
 
     selectClient(id) {
-        this.currentClient = this.clients.find(c => c.id === id);
+        this.currentClient = id; // Always stored as string ID
         localStorage.setItem('mindset_current_client', id);
         this.renderClientList();
         this.closeClientDropdown();
 
+        const client = this.getCurrentClient();
+        if (!client) return;
+
         document.getElementById('empty-client-state').classList.add('hidden');
         document.getElementById('client-content').classList.remove('hidden');
 
-        document.getElementById('display-client-name').textContent = this.currentClient.name;
-        document.getElementById('cfg-guidelines').value = this.currentClient.guidelines;
-        document.getElementById('cfg-pillars').value = this.currentClient.pillars;
+        document.getElementById('display-client-name').textContent = client.name;
+        document.getElementById('cfg-guidelines').value = client.guidelines || '';
+        document.getElementById('cfg-pillars').value = client.pillars || '';
     },
 
     toggleClientDropdown() {
@@ -678,9 +702,25 @@ const app = {
         if (dropdown) dropdown.classList.remove('active');
     },
 
+    getCurrentClient() {
+        if (!this.currentClient) return null;
+        // currentClient is always a string ID
+        return this.clients.find(c => c.id === this.currentClient) || null;
+    },
+
     getCurrentClientName() {
-        if (!this.currentClient) return 'Seleccionar cliente';
-        return this.clients.find(c => c.id === this.currentClient)?.name || 'Sin cliente';
+        const client = this.getCurrentClient();
+        return client ? client.name : 'Seleccionar cliente';
+    },
+
+    // Returns a context block to inject into AI prompts
+    getClientContextPrompt() {
+        const client = this.getCurrentClient();
+        if (!client) return '';
+        const parts = [`Cliente: ${client.name}`];
+        if (client.guidelines) parts.push(`Tono y voz de marca: ${client.guidelines}`);
+        if (client.pillars) parts.push(`Pilares estratégicos: ${client.pillars}`);
+        return `\n\nCONTEXTO DEL CLIENTE ACTIVO:\n${parts.join('\n')}`;
     },
 
     // --- HISTORY MANAGEMENT ---
@@ -742,22 +782,26 @@ const app = {
 
     saveCurrentClient() {
         if (!this.currentClient) return;
+        const client = this.getCurrentClient();
+        if (!client) return;
 
-        this.currentClient.guidelines = document.getElementById('cfg-guidelines').value;
-        this.currentClient.pillars = document.getElementById('cfg-pillars').value;
+        client.guidelines = document.getElementById('cfg-guidelines').value;
+        client.pillars = document.getElementById('cfg-pillars').value;
 
         this.saveClients();
-        this.toast(`✅ Memoria guardada para ${this.currentClient.name}`);
+        this.toast(`Memoria guardada para ${client.name}`, 'success');
     },
 
     deleteClient() {
         if (!this.currentClient) return;
+        const client = this.getCurrentClient();
+        if (!client) return;
 
-        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente a ${this.currentClient.name}?`)) {
+        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente a ${client.name}?`)) {
             return;
         }
 
-        this.clients = this.clients.filter(c => c.id !== this.currentClient.id);
+        this.clients = this.clients.filter(c => c.id !== this.currentClient);
         this.saveClients();
         this.currentClient = null;
 
@@ -765,7 +809,7 @@ const app = {
         document.getElementById('empty-client-state').classList.remove('hidden');
 
         this.renderClientList();
-        this.toast(`🗑️ Cliente eliminado correctamente.`);
+        this.toast('Cliente eliminado correctamente.', 'info');
     },
 
     async uploadClientDocument(event) {
@@ -870,12 +914,17 @@ const app = {
             </div>
         `;
 
+        const client = this.getCurrentClient();
+        const clientContext = client
+            ? { name: client.name, guidelines: client.guidelines, pillars: client.pillars }
+            : null;
+
         this.showLoader('Generando el debate de Focus Group...');
         try {
             const response = await fetch(`${this.getAPIBase()}/api/focus-group`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ avatars, idea })
+                body: JSON.stringify({ avatars, idea, clientContext })
             });
             const data = await response.json();
             this.hideLoader();
@@ -1068,12 +1117,17 @@ const app = {
         const output = document.getElementById('tf-output');
         output.innerHTML = '<p style="color: #777;">Proyectando escenarios...</p>';
 
+        const client = this.getCurrentClient();
+        const clientContext = client
+            ? { name: client.name, guidelines: client.guidelines, pillars: client.pillars }
+            : null;
+
         this.showLoader('Consultando el oráculo de tendencias...');
         try {
             const response = await fetch(`${this.getAPIBase()}/api/trend-forecast`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ category })
+                body: JSON.stringify({ category, clientContext })
             });
             const data = await response.json();
             this.hideLoader();
@@ -1109,12 +1163,17 @@ const app = {
         const output = document.getElementById('cm-output');
         output.innerHTML = '<p style="color: #777;">Leyendo la mente de la competencia...</p>';
 
+        const client = this.getCurrentClient();
+        const clientContext = client
+            ? { name: client.name, guidelines: client.guidelines, pillars: client.pillars }
+            : null;
+
         this.showLoader('Construyendo la Matriz de Vulnerabilidad...');
         try {
             const response = await fetch(`${this.getAPIBase()}/api/competitor-analysis`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ competitors, axis })
+                body: JSON.stringify({ competitors, axis, clientContext })
             });
             const data = await response.json();
             this.hideLoader();
