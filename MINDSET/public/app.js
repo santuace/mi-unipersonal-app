@@ -1032,3 +1032,12 @@ const app = {
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });
+
+// Cerrar dropdown de cliente al hacer click fuera
+document.addEventListener('click', (e) => {
+    const selector = document.getElementById('client-selector');
+    const dropdown = document.getElementById('client-dropdown');
+    if (dropdown && selector && !selector.contains(e.target) && !dropdown.contains(e.target)) {
+        app.closeClientDropdown();
+    }
+});
