@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MINDSET AI — A Strategic Operating System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        "ogilvy-red": "#E02227",
+                        "ogilvy-black": "#000000",
+                        "charcoal": "#333333",
+                        "light-gray": "#F5F5F5",
+                    },
+                    fontFamily: {
+                        "serif": ["'Libre Baskerville'", "serif"],
+                        "sans": ["'Inter'", "Helvetica", "Arial", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body
+    class="antialiased bg-white dark:bg-ogilvy-red text-charcoal dark:text-white overflow-hidden h-screen selection:bg-ogilvy-red selection:text-white dark:selection:bg-white dark:selection:text-ogilvy-red">
+
+    <!-- Global Loader -->
+    <div id="global-loader"
+        class="hidden fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center">
+        <div class="w-10 h-10 border-2 border-black/10 border-t-ogilvy-red rounded-full animate-spin mb-4"></div>
+        <p class="text-[11px] font-bold uppercase tracking-widest text-charcoal/60">Processing with MINDSET AI...</p>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside
+            class="w-52 h-full bg-white dark:bg-transparent border-r border-black/10 dark:border-white/20 flex flex-col justify-between shrink-0 z-10">
+            <div class="p-5">
+                <div class="mb-8">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="material-symbols-outlined text-ogilvy-red text-2xl">psychology</span>
+                        <h1 class="font-serif text-lg font-bold tracking-tight text-ogilvy-black dark:text-white">
+                            MINDSET AI</h1>
+                    </div>
+                    <p
+                        class="text-[8px] font-bold text-ogilvy-black/40 dark:text-white/60 uppercase tracking-[0.3em] ml-8">
+                        Operating
+                        System</p>
+                </div>
+
+                <!-- Client Selector -->
+                <div class="relative mb-5">
+                    <div id="client-selector" onclick="app.toggleClientDropdown()">
+                        <span>Seleccionar cliente</span>
+                        <span class="material-symbols-outlined icon">expand_more</span>
+                    </div>
+                    <div id="client-dropdown"></div>
+                </div>
+
+                <nav id="sidebar-nav" class="space-y-1">
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10 active"
+                        data-target="dashboard">
+                        <span class="material-symbols-outlined text-[18px]">dashboard</span>
+                        <span>Dashboard</span>
+                    </a>
+
+                    <p class="text-[8px] font-bold text-ogilvy-black/30 uppercase tracking-[0.25em] px-2 pt-4 pb-1">
+                        Herramientas IA</p>
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10"
+                        data-target="strategy-lab">
+                        <span class="material-symbols-outlined text-[18px]">biotech</span>
+                        <span>Strategy Lab</span>
+                    </a>
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10"
+                        data-target="news">
+                        <span class="material-symbols-outlined text-[18px]">rss_feed</span>
+                        <span>Noticias IA</span>
+                    </a>
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10"
+                        data-target="prompt-maker">
+                        <span class="material-symbols-outlined text-[18px]">auto_fix_high</span>
+                        <span>El Prompt Perfecto</span>
+                    </a>
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10"
+                        data-target="brief-maker">
+                        <span class="material-symbols-outlined text-[18px]">description</span>
+                        <span>Ayuda Brief</span>
+                    </a>
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10"
+                        data-target="pnt-maker">
+                        <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+                        <span>PNT Generator</span>
+                    </a>
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10"
+                        data-target="analyzer">
+                        <span class="material-symbols-outlined text-[18px]">query_stats</span>
+                        <span>El Analizador</span>
+                    </a>
+
+                    <p class="text-[8px] font-bold text-ogilvy-black/30 uppercase tracking-[0.25em] px-2 pt-4 pb-1">
+                        Gestión</p>
+                    <a href="#"
+                        class="nav-item flex items-center gap-3 text-[12px] font-medium px-2 py-1.5 rounded transition-colors dark:text-white dark:hover:text-white dark:hover:bg-white/10"
+                        data-target="clients">
+                        <span class="material-symbols-outlined text-[18px]">folder_special</span>
+                        <span>Clientes</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="p-5">
+                <div class="flex items-center gap-3 pt-4 border-t border-black/5">
+                    <div class="w-7 h-7 rounded-full bg-ogilvy-red flex items-center justify-center">
+                        <span class="material-symbols-outlined text-white text-sm">person</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-ogilvy-black dark:text-white">Agencia</span>
+                        <span
+                            class="text-[8px] uppercase tracking-wider text-ogilvy-black/50 dark:text-white/60 leading-none">Creative
+                            Director</span>
+                    </div>
+                    <div class="ml-auto flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="flex-1 h-screen flex flex-col bg-white dark:bg-transparent overflow-hidden">
+
+            <!-- Breadcrumb Navigation -->
+            <div id="breadcrumb" class="breadcrumb hidden">
+                <span onclick="app.navigate('dashboard')">Inicio</span>
+            </div>
+
+            <!-- ======= 1. DASHBOARD VIEW ======= -->
+            <section id="view-dashboard" class="view-section active flex flex-col h-full px-8 py-5">
+                <header
+                    class="flex justify-between items-center mb-5 border-b border-black/10 dark:border-white/20 pb-3 shrink-0">
+                    <div>
+                        <h2 class="font-serif text-2xl font-bold leading-none text-ogilvy-black dark:text-white">The
+                            Agency Mindset.
+                        </h2>
+                        <p class="font-medium mt-0.5 text-xs text-charcoal/60 dark:text-white/70 tracking-tight">Elegí
+                            tu instrumento.</p>
+                    </div>
+                    <div class="flex gap-4 items-center">
+                        <button id="theme-toggle"
+                            class="hover:text-ogilvy-red transition-colors text-charcoal dark:text-white flex items-center justify-center w-8 h-8 rounded-full border border-black/10 dark:border-white/20 hover:border-ogilvy-red dark:hover:border-white/50"
+                            title="Alternar Modo Oscuro">
+                            <span class="material-symbols-outlined text-[18px]">dark_mode</span>
+                        </button>
+                        <div
+                            class="text-[9px] font-bold uppercase tracking-widest bg-black text-white px-3 py-1 dark-keep-bg">
+                            Terminal en Vivo
+                        </div>
+                    </div>
+                </header>
+
+                <div class="grid grid-cols-12 gap-4 flex-1 min-h-0 overflow-hidden">
+                    <!-- Strategic Lab Hero -->
+                    <div class="col-span-8 border border-black/15 p-5 flex flex-col justify-between bg-white dark:bg-white/5 hover:border-ogilvy-red dark:hover:bg-white/10 transition-colors cursor-pointer group"
+                        onclick="app.navigate('strategy-lab')">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <span
+                                    class="material-symbols-outlined text-2xl text-ogilvy-red dark:text-white/40 dark:group-hover:text-white transition-colors">biotech</span>
+                                <span
+                                    class="text-[9px] font-bold tracking-widest uppercase text-charcoal/40 dark:text-white/60">Laboratory
+                                    01</span>
+                            </div>
+                            <h3 class="font-serif text-3xl leading-tight text-ogilvy-black dark:text-white">Strategy
+                                <br /><span class="italic text-ogilvy-red dark:text-white">Lab</span>
+                            </h3>
+                        </div>
+                        <div class="flex justify-between items-end gap-6">
+                            <p class="max-w-xs text-[12px] leading-snug text-charcoal/70 dark:text-white/80">
+                                Herramientas para ayudar con
+                                la estrategia, focus groups simulados, arquetipos de personalidad de marca, predicciones
+                                de tendencias por rubro y una matriz comparativa muy útil.</p>
+                            <button
+                                class="px-5 py-2 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all whitespace-nowrap">Ingresar</button>
+                        </div>
+                    </div>
+
+                    <!-- Intelligence Feed -->
+                    <div class="col-span-4 border border-black/15 p-4 bg-white dark:bg-white/5 flex flex-col min-h-0">
+                        <div class="flex items-center gap-2 mb-3 shrink-0">
+                            <span class="w-1.5 h-1.5 bg-ogilvy-red dark:bg-white rounded-full"></span>
+                            <h3
+                                class="text-[9px] font-bold uppercase tracking-widest text-ogilvy-black dark:text-white">
+                                Noticias IA
+                            </h3>
+                        </div>
+                        <div id="dash-news-feed" class="space-y-3 overflow-y-auto pr-1 flex-1">
+                            <div class="border-b border-black/5 pb-2 cursor-pointer" onclick="app.navigate('news')">
+                                <h4
+                                    class="font-serif text-[13px] leading-snug mb-1 hover:text-ogilvy-red text-ogilvy-black dark:text-white">
+                                    IA generativa transforma la producción creativa publicitaria.</h4>
+                                <p class="text-[8px] text-charcoal/50 font-bold tracking-tighter uppercase">Última hora
+                                    — Análisis</p>
+                            </div>
+                            <div class="border-b border-black/5 pb-2 cursor-pointer" onclick="app.navigate('news')">
+                                <h4
+                                    class="font-serif text-[13px] leading-snug mb-1 hover:text-ogilvy-red text-ogilvy-black dark:text-white">
+                                    Por qué la emoción sigue siendo el algoritmo definitivo.</h4>
+                                <p class="text-[8px] text-charcoal/50 font-bold tracking-tighter uppercase">5 horas —
+                                    Editorial</p>
+                            </div>
+                            <div class="pb-1 cursor-pointer" onclick="app.navigate('news')">
+                                <h4
+                                    class="font-serif text-[13px] leading-snug mb-1 hover:text-ogilvy-red text-ogilvy-black dark:text-white">
+                                    Media buying predictivo con modelos de lenguaje.</h4>
+                                <p class="text-[8px] text-charcoal/50 font-bold tracking-tighter uppercase">Ayer —
+                                    Reporte</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Perfect Prompt -->
+                    <div class="col-span-6 border border-black/15 p-5 bg-white dark:bg-white/5 hover:border-ogilvy-red dark:hover:bg-white/10 transition-colors cursor-pointer group"
+                        onclick="app.navigate('prompt-maker')">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-serif text-xl italic text-ogilvy-black dark:text-white">El Prompt Perfecto
+                            </h3>
+                            <span
+                                class="material-symbols-outlined text-ogilvy-red dark:text-white/40 dark:group-hover:text-white transition-colors">auto_fix_high</span>
+                        </div>
+                        <div
+                            class="font-serif italic text-[13px] leading-relaxed text-charcoal/40 dark:text-white/60 mb-4 border-l-2 border-ogilvy-red pl-4 py-1 bg-light-gray/50 dark:bg-white/10">
+                            "Esta herramienta no crea imágenes, te da el prompt perfecto para que las hagas."
+                        </div>
+                        <p
+                            class="text-[9px] font-bold uppercase tracking-widest text-ogilvy-red dark:text-white hover:text-black dark:hover:text-white/70 transition-colors flex items-center gap-1">
+                            Abrir Studio <span class="material-symbols-outlined text-xs">arrow_forward</span></p>
+                    </div>
+
+                    <!-- Briefing Studio -->
+                    <div class="col-span-6 border border-black/15 p-5 bg-white dark:bg-white/5 hover:border-ogilvy-red dark:hover:bg-white/10 transition-colors cursor-pointer group"
+                        onclick="app.navigate('brief-maker')">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-serif text-xl text-ogilvy-black dark:text-white">Ayuda Brief</h3>
+                            <span
+                                class="material-symbols-outlined text-ogilvy-red dark:text-white/40 dark:group-hover:text-white transition-colors">edit_note</span>
+                        </div>
+                        <div
+                            class="font-serif italic text-[13px] leading-relaxed text-charcoal/40 dark:text-white/60 mb-4 border-l-2 border-ogilvy-red pl-4 py-1 bg-light-gray/50 dark:bg-white/10">
+                            "De un mensaje de tu cliente a un brief completo. Esta herramienta ayuda a Cuentas a
+                            elaborar un brief completo a partir de la info que tengas."
+                        </div>
+                        <div class="mt-auto flex justify-end">
+                            <p
+                                class="text-[9px] font-bold uppercase tracking-[0.2em] flex items-center gap-2 hover:text-ogilvy-red dark:hover:text-white/70 transition-colors text-ogilvy-black dark:text-white">
+                                Abrir Studio <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- PNT Generator -->
+                    <div class="col-span-4 border border-black/15 dark:border-white/20 p-4 flex flex-col justify-between h-28 bg-white dark:bg-white/5 hover:bg-light-gray dark:hover:bg-white/10 transition-colors cursor-pointer group"
+                        onclick="app.navigate('pnt-maker')">
+                        <span
+                            class="material-symbols-outlined text-charcoal/40 dark:text-white/40 group-hover:text-ogilvy-red dark:group-hover:text-white">rocket_launch</span>
+                        <div>
+                            <h3 class="font-serif text-lg text-ogilvy-black dark:text-white">PNT Generator</h3>
+                            <p class="text-[10px] leading-tight text-charcoal/60 dark:text-white/60 mt-1">El mejor
+                                aliado de producción y
+                                creatividad.</p>
+                        </div>
+                    </div>
+
+                    <!-- The Analyzer -->
+                    <div class="col-span-4 border border-black/15 dark:border-white/20 p-4 flex flex-col justify-between h-28 bg-white dark:bg-white/5 hover:bg-light-gray dark:hover:bg-white/10 transition-colors cursor-pointer group"
+                        onclick="app.navigate('analyzer')">
+                        <span
+                            class="material-symbols-outlined text-charcoal/40 dark:text-white/40 group-hover:text-ogilvy-red dark:group-hover:text-white">query_stats</span>
+                        <div>
+                            <h3 class="font-serif text-lg text-ogilvy-black dark:text-white">El Analizador</h3>
+                            <p class="text-[10px] leading-tight text-charcoal/60 dark:text-white/60 mt-1">Ayuda a
+                                revisar imágenes y texto
+                                para que nada salga con faltas o errores.</p>
+                        </div>
+                    </div>
+
+                    <!-- Client Vault -->
+                    <div class="col-span-4 p-4 flex flex-col justify-between h-28 bg-light-gray dark:bg-white/5 border border-black dark:border-white/20 hover:border-ogilvy-red dark:hover:border-white transition-all cursor-pointer group"
+                        onclick="app.navigate('clients')">
+                        <span
+                            class="material-symbols-outlined text-ogilvy-red dark:text-white/40 dark:group-hover:text-white">folder_special</span>
+                        <div>
+                            <h3 class="font-serif text-lg text-ogilvy-black dark:text-white">Clientes</h3>
+                            <p class="text-[10px] leading-tight text-charcoal/60 dark:text-white/60 mt-1 pr-2">Cargá
+                                manuales de marca,
+                                posicionamiento o estrategias y Mindset aprende de ellos para todo lo demás.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="mt-4 pt-3 border-t border-black/5 flex justify-between items-center shrink-0">
+                    <div class="flex gap-8 text-[8px] font-bold uppercase tracking-[0.15em] text-charcoal/40">
+                        <span>MINDSET AI v2.0</span>
+                        <span>Gemini 2.5 Flash</span>
+                        <span>Neural Engine Online</span>
+                    </div>
+                    <div class="text-[8px] font-bold uppercase tracking-[0.15em] text-charcoal/30">© 2025 MINDSET AI — A
+                        Strategic Operating System.</div>
+                </footer>
+            </section>
+
+            <!-- ======= 2. INTELLIGENCE FEED (Noticias) ======= -->
+            <section id="view-news" class="view-section flex flex-col h-full px-8 py-5">
+                <div
+                    class="flex items-center justify-between mb-5 border-b border-black/10 dark:border-white/10 pb-3 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <button
+                            class="btn-back flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white transition-colors"
+                            onclick="app.navigate('dashboard')">
+                            <span class="material-symbols-outlined text-sm">arrow_back</span> Dashboard
+                        </button>
+                        <span class="text-charcoal/20 dark:text-white/20 mx-2">|</span>
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-ogilvy-red text-lg">rss_feed</span>
+                            <h2 class="font-serif text-lg font-bold text-ogilvy-black dark:text-white">Intelligence Feed
+                            </h2>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span id="news-timestamp" class="text-[10px] text-charcoal/40 dark:text-white/40 italic"></span>
+                        <button
+                            class="px-5 py-2 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all flex items-center gap-1.5"
+                            onclick="app.getNews()">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                            Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feed Container -->
+                <div class="flex-1 overflow-y-auto">
+                    <!-- Skeleton Loaders (shown while loading) -->
+                    <div id="news-skeleton" class="hidden">
+                        <div class="mb-4 h-52 bg-black/5 dark:bg-white/5 animate-pulse rounded-none"></div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="h-60 bg-black/5 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-60 bg-black/5 dark:bg-white/5 animate-pulse"></div>
+                            <div class="h-60 bg-black/5 dark:bg-white/5 animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    <!-- Empty / Error State -->
+                    <div id="news-empty" class="h-full flex flex-col items-center justify-center text-center py-20">
+                        <span
+                            class="material-symbols-outlined text-5xl text-charcoal/15 dark:text-white/20 mb-3">newspaper</span>
+                        <p
+                            class="text-[11px] font-bold uppercase tracking-widest text-charcoal/30 dark:text-white/50 mb-1">
+                            Feed vacío</p>
+                        <p class="text-xs text-charcoal/25 dark:text-white/30 mb-5">Cargá las últimas noticias de IA y
+                            marketing</p>
+                        <button onclick="app.getNews()"
+                            class="px-6 py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">
+                            Cargar Feed
+                        </button>
+                    </div>
+
+                    <!-- News Cards Grid (populated by JS) -->
+                    <div id="news-output" class="hidden">
+                        <!-- Hero card -->
+                        <div id="news-hero" class="mb-4"></div>
+                        <!-- Secondary grid -->
+                        <div id="news-grid" class="grid grid-cols-3 gap-4 pb-4"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======= 3. PERFECT PROMPT VIEW ======= -->
+            <section id="view-prompt-maker" class="view-section chat-layout flex flex-col h-full px-8 py-5">
+                <div class="flex items-center gap-3 mb-4 border-b border-black/10 pb-3 shrink-0">
+                    <button
+                        class="btn-back flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white transition-colors"
+                        onclick="app.navigate('dashboard')">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span> Dashboard
+                    </button>
+                    <span class="text-charcoal/20 mx-2">|</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-ogilvy-red text-lg">auto_fix_high</span>
+                        <h2 class="font-serif text-lg font-bold text-ogilvy-black dark:text-white italic">The Perfect
+                            Prompt</h2>
+                    </div>
+                </div>
+
+                <div class="flex-1 border border-black/15 flex flex-col overflow-hidden">
+                    <div class="chat-history flex-1 p-6 overflow-y-auto flex flex-col gap-6" id="chat-messages">
+                        <div class="message system flex gap-4">
+                            <div
+                                class="avatar w-8 h-8 rounded-full bg-ogilvy-red/10 flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-ogilvy-red text-sm">psychology</span>
+                            </div>
+                            <div
+                                class="bubble bg-light-gray dark:bg-white/10 px-4 py-3 rounded-r-xl rounded-bl-xl text-sm leading-relaxed max-w-2xl dark:text-white/90">
+                                ¡Hola! Soy el <strong>MINDSET Gem</strong>. Escríbeme qué quieres visualizar (ej: "un
+                                CEO en una sala de guerra corporativa") y crearé el prompt perfecto para Midjourney o
+                                Nano Banana.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-t border-black/10 p-4 bg-white shrink-0">
+                        <div
+                            class="flex items-center gap-3 border border-black/15 px-4 py-2 focus-within:border-ogilvy-red transition-colors">
+                            <textarea id="prompt-idea" rows="1" placeholder="Escribe tu idea de imagen aquí..."
+                                class="flex-1 resize-none outline-none text-sm italic placeholder-charcoal/30 bg-transparent"></textarea>
+                            <button onclick="app.optimizePrompt()"
+                                class="w-8 h-8 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red flex items-center justify-center hover:bg-black dark:hover:bg-white/90 transition-colors shrink-0">
+                                <span class="material-symbols-outlined text-sm">send</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======= 4. BRIEF MAKER VIEW ======= -->
+            <section id="view-brief-maker" class="view-section flex flex-col h-full px-8 py-5">
+                <div class="flex items-center gap-3 mb-4 border-b border-black/10 pb-3 shrink-0">
+                    <button
+                        class="btn-back flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white transition-colors"
+                        onclick="app.navigate('dashboard')">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span> Dashboard
+                    </button>
+                    <span class="text-charcoal/20 mx-2">|</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-ogilvy-red text-lg">description</span>
+                        <h2 class="font-serif text-lg font-bold text-ogilvy-black dark:text-white">Briefing Studio</h2>
+                    </div>
+                </div>
+                <div class="flex-1 grid grid-cols-2 gap-4 min-h-0 overflow-hidden">
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <form id="form-brief" onsubmit="event.preventDefault(); app.generateBrief();" class="space-y-4">
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">1.
+                                    Cliente / Marca</label>
+                                <input type="text" id="bm-client" required placeholder="Ej: Coca-Cola"
+                                    class="w-full border-b border-black/15 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white py-1.5 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent dark:text-white">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">2.
+                                    Desafío de Negocio</label>
+                                <textarea id="bm-challenge" required placeholder="¿Qué problema real vamos a resolver?"
+                                    rows="3"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">3.
+                                    Público / Target</label>
+                                <textarea id="bm-target" required
+                                    placeholder="Describe al público y su tensión con la categoría." rows="2"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">4.
+                                    Idea Principal</label>
+                                <input type="text" id="bm-idea" required
+                                    placeholder="El mensaje central que queremos instalar."
+                                    class="w-full border-b border-black/15 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white py-1.5 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent dark:text-white">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">5.
+                                    RTBs (Razones para Creer)</label>
+                                <textarea id="bm-rtb" required placeholder="Datos, specs, beneficios tangibles..."
+                                    rows="2"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">6.
+                                    Entregables y KPIs</label>
+                                <textarea id="bm-deliverables" placeholder="Piezas a crear y presupuesto estimado."
+                                    rows="2"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <button type="submit"
+                                class="w-full py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Sintetizar
+                                Brief con IA</button>
+                        </form>
+                    </div>
+                    <div
+                        class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto flex flex-col">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-black/10 shrink-0">
+                            <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white">Documento de
+                                Salida</h3>
+                            <span class="material-symbols-outlined text-charcoal/30 text-sm">edit_note</span>
+                        </div>
+                        <div id="brief-output"
+                            class="flex-1 markdown-body text-sm leading-relaxed text-charcoal dark:text-white/90">
+                            <p class="text-charcoal/30 dark:text-white/40 italic text-center mt-12 font-serif">Completa
+                                el formulario para
+                                visualizar el Brief aquí.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======= 5. PNT GENERATOR VIEW ======= -->
+            <section id="view-pnt-maker" class="view-section flex flex-col h-full px-8 py-5">
+                <div class="flex items-center gap-3 mb-4 border-b border-black/10 pb-3 shrink-0">
+                    <button
+                        class="btn-back flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white transition-colors"
+                        onclick="app.navigate('dashboard')">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span> Dashboard
+                    </button>
+                    <span class="text-charcoal/20 mx-2">|</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-ogilvy-red text-lg">rocket_launch</span>
+                        <h2 class="font-serif text-lg font-bold text-ogilvy-black dark:text-white">PNT Generator</h2>
+                    </div>
+                </div>
+                <div class="flex-1 grid grid-cols-2 gap-4 min-h-0 overflow-hidden">
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <form id="form-pnt" onsubmit="event.preventDefault(); app.generatePNT();" class="space-y-4">
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Cliente
+                                    / Producto</label>
+                                <input type="text" id="pnt-client" required placeholder="Ej: Volkswagen Taos"
+                                    class="w-full border-b border-black/15 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white py-1.5 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent dark:text-white">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Medio
+                                    / Formato</label>
+                                <input type="text" id="pnt-medium" required
+                                    placeholder="Ej: Radio deportiva, mención matinal"
+                                    class="w-full border-b border-black/15 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white py-1.5 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent dark:text-white">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Duración
+                                    Estimada</label>
+                                <input type="text" id="pnt-duration" required placeholder="Ej: 30 segundos"
+                                    class="w-full border-b border-black/15 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white py-1.5 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent dark:text-white">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Información
+                                    Clave / Promoción</label>
+                                <textarea id="pnt-info" required
+                                    placeholder="Mencionar descuento del 20% y prueba de manejo." rows="4"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <button type="submit"
+                                class="w-full py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Redactar
+                                PNT</button>
+                        </form>
+                    </div>
+                    <div
+                        class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto flex flex-col">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-black/10 shrink-0">
+                            <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white">Guion Generado
+                            </h3>
+                            <span class="material-symbols-outlined text-charcoal/30 text-sm">record_voice_over</span>
+                        </div>
+                        <div id="pnt-output"
+                            class="flex-1 markdown-body text-sm leading-relaxed text-charcoal dark:text-white/90">
+                            <p class="text-charcoal/30 dark:text-white/40 italic text-center mt-12 font-serif">El guion
+                                del PNT aparecerá
+                                aquí listo para leer en vivo.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======= 6. THE ANALYZER VIEW ======= -->
+            <section id="view-analyzer" class="view-section flex flex-col h-full px-8 py-5">
+                <div class="flex items-center gap-3 mb-4 border-b border-black/10 pb-3 shrink-0">
+                    <button
+                        class="btn-back flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white transition-colors"
+                        onclick="app.navigate('dashboard')">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span> Dashboard
+                    </button>
+                    <span class="text-charcoal/20 mx-2">|</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-ogilvy-red text-lg">query_stats</span>
+                        <h2 class="font-serif text-lg font-bold text-ogilvy-black dark:text-white">The Analyzer</h2>
+                    </div>
+                </div>
+                <div class="flex-1 grid grid-cols-2 gap-4 min-h-0 overflow-hidden">
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <form id="form-analyze" onsubmit="event.preventDefault(); app.analyzeContent();"
+                            class="space-y-4">
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Contexto
+                                    / Audiencia Objetivo</label>
+                                <input type="text" id="an-context" required
+                                    placeholder="Ej: Millennials Uruguayos, campaña de verano"
+                                    class="w-full border-b border-black/15 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white py-1.5 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent dark:text-white">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Texto
+                                    o Guion (Opcional)</label>
+                                <textarea id="an-text" placeholder="Pega el copy, el locutor, o describe la idea..."
+                                    rows="4"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <div id="drop-area"
+                                class="border-2 border-dashed border-black/15 p-8 text-center relative cursor-pointer hover:border-ogilvy-red transition-colors bg-light-gray/30">
+                                <input type="file" id="an-file" accept="image/*"
+                                    class="file-input absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                <span
+                                    class="material-symbols-outlined text-4xl text-charcoal/25 dark:text-white/40 block mb-2">cloud_upload</span>
+                                <p class="text-[11px] text-charcoal/40 dark:text-white/60">Arrastra tu gráfica o <strong
+                                        class="text-ogilvy-red dark:text-white">haz clic para explorar</strong></p>
+                                <span id="file-name"
+                                    class="hidden block mt-2 text-[11px] font-bold text-ogilvy-red"></span>
+                            </div>
+                            <button type="submit"
+                                class="w-full py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Analizar
+                                Contenido</button>
+                        </form>
+                    </div>
+                    <div
+                        class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto flex flex-col">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-black/10 shrink-0">
+                            <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white">Reporte de
+                                Evaluación</h3>
+                            <span class="material-symbols-outlined text-charcoal/30 text-sm">analytics</span>
+                        </div>
+                        <div id="analyzer-output"
+                            class="flex-1 markdown-body text-sm leading-relaxed text-charcoal dark:text-white/90">
+                            <p class="text-charcoal/30 dark:text-white/40 italic text-center mt-12 font-serif">Sube una
+                                pieza o texto para
+                                obtener puntajes (1-10) en Performance, CTA, Tono y Recomendaciones.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======= 7. STRATEGIC INSIGHTS LAB VIEW ======= -->
+            <section id="view-strategy-lab" class="view-section flex flex-col h-full px-8 py-5">
+                <div class="flex items-center gap-3 mb-4 border-b border-black/10 pb-3 shrink-0">
+                    <button
+                        class="btn-back flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white transition-colors"
+                        onclick="app.navigate('dashboard')">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span> Dashboard
+                    </button>
+                    <span class="text-charcoal/20 mx-2">|</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-ogilvy-red text-lg">biotech</span>
+                        <h2 class="font-serif text-lg font-bold text-ogilvy-black dark:text-white">Strategy Lab</h2>
+                    </div>
+                </div>
+
+                <!-- Inner Tabs -->
+                <div class="flex gap-0 mb-4 border-b border-black/10 shrink-0" id="lab-tab-nav">
+                    <button onclick="app.switchLabTab('focus')"
+                        class="tab-btn text-[10px] font-bold uppercase tracking-widest px-5 py-2.5 flex items-center gap-2 border-b-2 border-transparent text-charcoal/40 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white dark:hover:border-white hover:border-ogilvy-red transition-colors">
+                        <span class="material-symbols-outlined text-sm">groups</span> Focus Group
+                    </button>
+                    <button onclick="app.switchLabTab('archetypes')"
+                        class="tab-btn text-[10px] font-bold uppercase tracking-widest px-5 py-2.5 flex items-center gap-2 border-b-2 border-transparent text-charcoal/40 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white dark:hover:border-white hover:border-ogilvy-red transition-colors">
+                        <span class="material-symbols-outlined text-sm">radar</span> Archetypes
+                    </button>
+                    <button onclick="app.switchLabTab('trends')"
+                        class="tab-btn text-[10px] font-bold uppercase tracking-widest px-5 py-2.5 flex items-center gap-2 border-b-2 border-transparent text-charcoal/40 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white dark:hover:border-white hover:border-ogilvy-red transition-colors">
+                        <span class="material-symbols-outlined text-sm">trending_up</span> Trends
+                    </button>
+                    <button onclick="app.switchLabTab('competitors')"
+                        class="tab-btn text-[10px] font-bold uppercase tracking-widest px-5 py-2.5 flex items-center gap-2 border-b-2 border-transparent text-charcoal/40 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white dark:hover:border-white hover:border-ogilvy-red transition-colors">
+                        <span class="material-symbols-outlined text-sm">psychology_alt</span> Competitors
+                    </button>
+                </div>
+
+                <!-- Tab 1: Focus Group -->
+                <div id="lab-tab-focus"
+                    class="lab-content active flex-1 min-h-0 overflow-hidden grid grid-cols-2 gap-4">
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white mb-1">Configuración
+                            del Panel</h3>
+                        <p class="text-[11px] text-charcoal/50 dark:text-white/70 mb-4">Define 3 perfiles para debatir
+                            tu premisa de
+                            campaña.</p>
+                        <form id="form-focus" onsubmit="event.preventDefault(); app.runFocusGroup();" class="space-y-3">
+                            <div id="fg-avatars-container" class="space-y-3">
+                                <div class="avatar-entry p-3 bg-light-gray dark:bg-white/10 space-y-2 relative">
+                                    <p
+                                        class="text-[8px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60">
+                                        Avatar 1</p>
+                                    <input type="text" placeholder="Nombre (Ej: Sofía)" required
+                                        class="fg-name w-full border-b border-black/15 dark:border-white/20 bg-transparent py-1 text-sm outline-none focus:border-ogilvy-red dark:focus:border-white transition-colors placeholder-charcoal/25 dark:placeholder-white/40 dark:text-white">
+                                    <input type="text" placeholder="Perfil (Ej: Universitaria, Eco-friendly)" required
+                                        class="fg-profile w-full border-b border-black/15 dark:border-white/20 bg-transparent py-1 text-sm outline-none focus:border-ogilvy-red dark:focus:border-white transition-colors placeholder-charcoal/25 dark:placeholder-white/40 dark:text-white">
+                                </div>
+                                <div class="avatar-entry p-3 bg-light-gray dark:bg-white/10 space-y-2 relative">
+                                    <button type="button" onclick="this.parentElement.remove()"
+                                        class="absolute top-2 right-2 text-charcoal/30 hover:text-ogilvy-red transition-colors dark:text-white/40 dark:hover:text-white">
+                                        <span class="material-symbols-outlined text-sm">close</span>
+                                    </button>
+                                    <p
+                                        class="text-[8px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60">
+                                        Avatar 2</p>
+                                    <input type="text" placeholder="Nombre (Ej: Carlos)" required
+                                        class="fg-name w-full border-b border-black/15 dark:border-white/20 bg-transparent py-1 text-sm outline-none focus:border-ogilvy-red dark:focus:border-white transition-colors placeholder-charcoal/25 dark:placeholder-white/40 dark:text-white">
+                                    <input type="text" placeholder="Perfil (Ej: Padre de familia, pragmático)" required
+                                        class="fg-profile w-full border-b border-black/15 dark:border-white/20 bg-transparent py-1 text-sm outline-none focus:border-ogilvy-red dark:focus:border-white transition-colors placeholder-charcoal/25 dark:placeholder-white/40 dark:text-white">
+                                </div>
+                            </div>
+                            <button type="button" onclick="app.addAvatarInput()"
+                                class="w-full py-2 border border-black/15 dark:border-white/20 text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:border-ogilvy-red hover:text-ogilvy-red dark:hover:border-white dark:hover:text-white transition-colors text-charcoal/70 dark:text-white/70">
+                                <span class="material-symbols-outlined text-sm">add</span> Agregar Avatar
+                            </button>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Idea
+                                    / Premisa a Evaluar</label>
+                                <textarea id="fg-idea" required
+                                    placeholder="Lanzar un banco 100% digital sin atención humana." rows="3"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <button type="submit"
+                                class="w-full py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Iniciar
+                                Debate</button>
+                        </form>
+                    </div>
+                    <div
+                        class="border border-black/15 dark:border-white/20 dark:bg-white/5 flex flex-col overflow-hidden">
+                        <div class="p-4 border-b border-black/10 shrink-0 flex items-center justify-between">
+                            <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white">Simulación en
+                                Vivo</h3>
+                            <span class="material-symbols-outlined text-charcoal/30 text-sm">forum</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-4 space-y-4" id="fg-chat-history">
+                            <div class="flex gap-3">
+                                <div
+                                    class="w-7 h-7 rounded-full bg-ogilvy-red/10 flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-ogilvy-red text-xs">biotech</span>
+                                </div>
+                                <div
+                                    class="bg-light-gray dark:bg-white/10 px-3 py-2 rounded-r-lg rounded-bl-lg text-[12px] leading-relaxed dark:text-white/90">
+                                    El moderador está esperando la premisa para iniciar la sala.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Archetypes -->
+                <div id="lab-tab-archetypes" class="lab-content flex-1 min-h-0 overflow-hidden grid grid-cols-2 gap-4">
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white mb-1">Arquetipos
+                            Junguianos</h3>
+                        <p class="text-[11px] text-charcoal/50 dark:text-white/70 mb-5">Analiza los pilares del cliente
+                            activo para trazar
+                            su personalidad de marca.</p>
+                        <div class="p-4 bg-light-gray dark:bg-white/10 mb-5">
+                            <label for="arch-client-select" class="block text-[8px] font-bold uppercase tracking-widest text-charcoal/40 mb-2">Cliente Activo</label>
+                            <select id="arch-client-select" class="w-full bg-white dark:bg-black/20 border border-black/15 dark:border-white/20 p-2 text-sm font-bold text-ogilvy-black dark:text-white focus:outline-none focus:border-ogilvy-red transition-colors cursor-pointer appearance-none rounded-none">
+                                <option value="" disabled selected>Seleccioná un cliente...</option>
+                            </select>
+                        </div>
+                        <button onclick="app.generateArchetypes()"
+                            class="w-full py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Generar
+                            Matriz</button>
+                    </div>
+                    <div class="border border-black/15 p-6 overflow-y-auto flex flex-col items-center">
+                        <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white mb-1 self-start">
+                            Archetype Wheel
+                        </h3>
+                        <div class="w-full max-w-lg mt-4">
+                            <canvas id="archetypeChart"></canvas>
+                        </div>
+                        <div id="arch-summary" class="mt-4 w-full markdown-body text-sm"></div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Trends -->
+                <div id="lab-tab-trends" class="lab-content flex-1 min-h-0 overflow-hidden grid grid-cols-2 gap-4">
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white mb-1">Pronóstico de
+                            Escenarios</h3>
+                        <p class="text-[11px] text-charcoal/50 dark:text-white/70 mb-5">Cruzamos IA con tu categoría de
+                            negocio para
+                            proyectar 3 futuros posibles.</p>
+                        <form onsubmit="event.preventDefault(); app.generateTrends();" class="space-y-4">
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Categoría
+                                    del Cliente</label>
+                                <input type="text" id="tf-category" required
+                                    placeholder="Ej: Supermercados, Seguros, Automotriz..."
+                                    class="w-full border-b border-black/15 dark:border-white/20 bg-transparent py-1.5 text-sm outline-none focus:border-ogilvy-red dark:focus:border-white transition-colors placeholder-charcoal/25 dark:placeholder-white/40 dark:text-white">
+                            </div>
+                            <button type="submit"
+                                class="w-full py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Proyectar
+                                Futuros</button>
+                        </form>
+                    </div>
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <h3
+                            class="font-serif text-base font-bold text-ogilvy-black dark:text-white mb-4 pb-3 border-b border-black/10">
+                            Escenarios Proyectados</h3>
+                        <div id="tf-output" class="markdown-body text-sm dark:text-white/90">
+                            <p class="text-charcoal/30 italic font-serif text-center mt-8">Ingresa una categoría para
+                                vislumbrar su futuro.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Competitors -->
+                <div id="lab-tab-competitors" class="lab-content flex-1 min-h-0 overflow-hidden grid grid-cols-2 gap-4">
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <h3 class="font-serif text-base font-bold text-ogilvy-black dark:text-white mb-1">Brecha
+                            Estratégica</h3>
+                        <p class="text-[11px] text-charcoal/50 dark:text-white/70 mb-5">Matriz comparativa de Promesa
+                            vs. Realidad para
+                            detectar vulnerabilidades.</p>
+                        <form onsubmit="event.preventDefault(); app.generateMatrix();" class="space-y-4">
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Competidores
+                                    (Nombres o URLs)</label>
+                                <textarea id="cm-competitors" required
+                                    placeholder="1. Banco Itaú&#10;2. BROU&#10;3. Santander" rows="4"
+                                    class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-2 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-1">Eje
+                                    de Análisis (Opcional)</label>
+                                <input type="text" id="cm-axis"
+                                    placeholder="Ej: Atención al cliente, Innovación tecnológica..."
+                                    class="w-full border-b border-black/15 dark:border-white/20 bg-transparent py-1.5 text-sm outline-none focus:border-ogilvy-red dark:focus:border-white transition-colors placeholder-charcoal/25 dark:placeholder-white/40 dark:text-white">
+                            </div>
+                            <button type="submit"
+                                class="w-full py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Generar
+                                Matriz de Ataque</button>
+                        </form>
+                    </div>
+                    <div class="border border-black/15 dark:border-white/20 dark:bg-white/5 p-6 overflow-y-auto">
+                        <h3
+                            class="font-serif text-base font-bold text-ogilvy-black dark:text-white mb-4 pb-3 border-b border-black/10">
+                            Matriz de Vulnerabilidad</h3>
+                        <div id="cm-output" class="markdown-body text-sm overflow-x-auto dark:text-white/90">
+                            <p class="text-charcoal/30 italic font-serif text-center mt-8">La IA cruzará la promesa
+                                percibida frente a la realidad operativa.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ======= 8. CLIENT VAULT VIEW ======= -->
+            <section id="view-clients" class="view-section flex flex-col h-full px-8 py-5">
+                <div class="flex items-center gap-3 mb-4 border-b border-black/10 pb-3 shrink-0">
+                    <button
+                        class="btn-back flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-charcoal/50 dark:text-white/60 hover:text-ogilvy-red dark:hover:text-white transition-colors"
+                        onclick="app.navigate('dashboard')">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span> Dashboard
+                    </button>
+                    <span class="text-charcoal/20 mx-2">|</span>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-ogilvy-red text-lg">folder_special</span>
+                        <h2 class="font-serif text-lg font-bold text-ogilvy-black dark:text-white">Client Vault</h2>
+                    </div>
+                </div>
+                <div class="flex-1 flex gap-4 min-h-0 overflow-hidden">
+                    <!-- Left Panel -->
+                    <div class="w-56 border border-black/15 flex flex-col">
+                        <div class="p-4 border-b border-black/10">
+                            <button onclick="app.toggleNewClientInput()"
+                                class="w-full py-2 border border-black/15 dark:border-white/20 text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:border-ogilvy-red hover:text-ogilvy-red dark:hover:border-white dark:hover:text-white transition-colors">
+                                <span class="material-symbols-outlined text-sm">add</span> Nuevo Cliente
+                            </button>
+                            <div id="new-client-box" class="hidden mt-3 space-y-2">
+                                <input type="text" id="new-client-name" placeholder="Nombre completo"
+                                    class="w-full border-b border-black/15 dark:border-white/20 bg-transparent py-1 text-sm outline-none focus:border-ogilvy-red dark:focus:border-white transition-colors placeholder-charcoal/25 dark:placeholder-white/40 dark:text-white">
+                                <button onclick="app.addClient()"
+                                    class="w-full py-1.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Guardar</button>
+                            </div>
+                        </div>
+                        <div id="client-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+                    </div>
+
+                    <!-- Right Panel -->
+                    <div class="flex-1 border border-black/15 p-6 overflow-y-auto">
+                        <div id="empty-client-state"
+                            class="h-full flex flex-col items-center justify-center text-center">
+                            <span
+                                class="material-symbols-outlined text-4xl text-charcoal/15 dark:text-white/30 mb-4">folder_open</span>
+                            <p
+                                class="text-[11px] font-bold uppercase tracking-widest text-charcoal/30 dark:text-white/60">
+                                Selecciona o
+                                crea un cliente</p>
+                            <p class="text-xs text-charcoal/25 dark:text-white/40 mt-1">para configurar su memoria de
+                                marca</p>
+                        </div>
+                        <div id="client-content" class="hidden">
+                            <div class="flex items-center justify-between mb-6 pb-4 border-b border-black/10">
+                                <h3 id="display-client-name"
+                                    class="font-serif text-xl font-bold text-ogilvy-black dark:text-white">
+                                </h3>
+                                <div>
+                                    <input type="file" id="client-doc-upload" class="hidden"
+                                        accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.xls,.xlsx,.csv"
+                                        onchange="app.uploadClientDocument(event)">
+                                    <button onclick="document.getElementById('client-doc-upload').click()"
+                                        class="px-4 py-1.5 border border-black/15 dark:border-white/20 text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 hover:border-ogilvy-red hover:text-ogilvy-red dark:hover:border-white dark:hover:text-white transition-colors">
+                                        <span class="material-symbols-outlined text-sm">upload_file</span> Subir
+                                        Documento
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-5">
+                                <div>
+                                    <label
+                                        class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-2">Brand
+                                        Guidelines (Voz y Tono)</label>
+                                    <textarea id="cfg-guidelines" rows="5"
+                                        placeholder="¿Cómo habla la marca? ¿Qué palabras nunca usa?"
+                                        class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-3 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-[8px] font-bold uppercase tracking-widest text-charcoal/40 dark:text-white/60 block mb-2">Pilares
+                                        Estratégicos & Target</label>
+                                    <textarea id="cfg-pillars" rows="5"
+                                        placeholder="Definición de producto, misión, visión, buyer personas..."
+                                        class="w-full border border-black/10 dark:border-white/20 focus:border-ogilvy-red dark:focus:border-white p-3 text-sm outline-none transition-colors placeholder-charcoal/25 dark:placeholder-white/40 bg-transparent resize-none dark:text-white"></textarea>
+                                </div>
+                                <div class="flex justify-between items-center mt-4">
+                                    <button onclick="app.deleteClient()"
+                                        class="px-4 py-2 border border-ogilvy-red dark:border-white/30 text-ogilvy-red dark:text-white/60 text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-ogilvy-red hover:text-white dark:hover:bg-white/10 dark:hover:text-white transition-all">
+                                        <span class="material-symbols-outlined text-sm">delete</span> Eliminar Cliente
+                                    </button>
+                                    <button onclick="app.saveCurrentClient()"
+                                        class="px-6 py-2.5 bg-ogilvy-red dark:bg-white text-white dark:text-ogilvy-red text-[9px] font-bold uppercase tracking-widest hover:bg-black dark:hover:bg-white/90 transition-all">Guardar
+                                        Configuración</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
