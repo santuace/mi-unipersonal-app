@@ -819,3 +819,149 @@ select:disabled {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     border-color: rgba(255, 255, 255, 0.15);
 }
+/* ================================================
+   MARKDOWN RENDERER STYLES
+   ================================================ */
+
+.md-h1 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+    margin: 1.5rem 0 0.75rem;
+    line-height: 1.3;
+}
+
+.md-h2 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+    margin: 1.4rem 0 0.6rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid rgba(0,0,0,0.08);
+    line-height: 1.3;
+}
+
+.md-h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+    margin: 1.2rem 0 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.md-p {
+    margin: 0.4rem 0;
+    line-height: 1.7;
+    color: var(--text-secondary, #444);
+}
+
+.md-hr {
+    border: none;
+    border-top: 1px solid rgba(0,0,0,0.12);
+    margin: 1.25rem 0;
+}
+
+.md-ul, .md-ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0 0.75rem;
+}
+
+.md-ul li, .md-ol li {
+    margin: 0.3rem 0;
+    line-height: 1.65;
+    color: var(--text-secondary, #444);
+}
+
+.md-ul li::marker {
+    color: #6b6b6b;
+}
+
+.md-table-wrap {
+    overflow-x: auto;
+    margin: 1rem 0;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.md-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.md-table thead {
+    background: rgba(0,0,0,0.04);
+}
+
+.md-table th {
+    padding: 0.6rem 0.9rem;
+    text-align: left;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #555;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.md-table td {
+    padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    color: #444;
+    line-height: 1.5;
+}
+
+.md-table tr:last-child td {
+    border-bottom: none;
+}
+
+.md-table tr:hover td {
+    background: rgba(0,0,0,0.02);
+}
+
+/* Dark mode */
+.dark .md-h1,
+.dark .md-h2,
+.dark .md-h3 {
+    color: #f0f0f0;
+}
+
+.dark .md-h2 {
+    border-bottom-color: rgba(255,255,255,0.1);
+}
+
+.dark .md-p,
+.dark .md-ul li,
+.dark .md-ol li {
+    color: #c0c0c0;
+}
+
+.dark .md-hr {
+    border-top-color: rgba(255,255,255,0.1);
+}
+
+.dark .md-table-wrap {
+    border-color: rgba(255,255,255,0.1);
+}
+
+.dark .md-table thead {
+    background: rgba(255,255,255,0.05);
+}
+
+.dark .md-table th {
+    color: #aaa;
+    border-bottom-color: rgba(255,255,255,0.1);
+}
+
+.dark .md-table td {
+    color: #bbb;
+    border-bottom-color: rgba(255,255,255,0.06);
+}
+
+.dark .md-table tr:hover td {
+    background: rgba(255,255,255,0.03);
+}

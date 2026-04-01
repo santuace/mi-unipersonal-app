@@ -216,13 +216,115 @@ const app = {
     },
 
     formatMarkdown(text) {
-        // Simple MD to HTML formatter for the UI
+        if (!text) return '';
+
+        const lines = text.split('\n');
+        const html = [];
+        let inList = false;
+        let inOrderedList = false;
+        let inTable = false;
+        let tableRows = [];
+
+        const flushTable = () => {
+            if (tableRows.length === 0) return;
+            let tableHtml = '<div class="md-table-wrap"><table class="md-table">';
+            tableRows.forEach((row, i) => {
+                const cells = row.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1).map(c => c.trim());
+                if (i === 0) {
+                    tableHtml += '<thead><tr>' + cells.map(c => `<th>${this.inlineFormat(c)}</th>`).join('') + '</tr></thead><tbody>';
+                } else {
+                    tableHtml += '<tr>' + cells.map(c => `<td>${this.inlineFormat(c)}</td>`).join('') + '</tr>';
+                }
+            });
+            tableHtml += '</tbody></table></div>';
+            html.push(tableHtml);
+            tableRows = [];
+            inTable = false;
+        };
+
+        const closeLists = () => {
+            if (inList) { html.push('</ul>'); inList = false; }
+            if (inOrderedList) { html.push('</ol>'); inOrderedList = false; }
+        };
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            // Table rows
+            if (/^\|.+\|/.test(line)) {
+                if (!inTable) { closeLists(); inTable = true; }
+                // Skip separator rows like |---|---|
+                if (/^\|[\s\-:|]+\|$/.test(line)) continue;
+                tableRows.push(line);
+                continue;
+            } else if (inTable) {
+                flushTable();
+            }
+
+            // Horizontal rule
+            if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line.trim())) {
+                closeLists();
+                html.push('<hr class="md-hr">');
+                continue;
+            }
+
+            // Headers
+            if (/^### (.+)/.test(line)) {
+                closeLists();
+                html.push(`<h3 class="md-h3">${this.inlineFormat(line.replace(/^### /, ''))}</h3>`);
+                continue;
+            }
+            if (/^## (.+)/.test(line)) {
+                closeLists();
+                html.push(`<h2 class="md-h2">${this.inlineFormat(line.replace(/^## /, ''))}</h2>`);
+                continue;
+            }
+            if (/^# (.+)/.test(line)) {
+                closeLists();
+                html.push(`<h1 class="md-h1">${this.inlineFormat(line.replace(/^# /, ''))}</h1>`);
+                continue;
+            }
+
+            // Unordered list
+            if (/^[-*+] (.+)/.test(line)) {
+                if (inOrderedList) { html.push('</ol>'); inOrderedList = false; }
+                if (!inList) { html.push('<ul class="md-ul">'); inList = true; }
+                html.push(`<li>${this.inlineFormat(line.replace(/^[-*+] /, ''))}</li>`);
+                continue;
+            }
+
+            // Ordered list
+            if (/^\d+\. (.+)/.test(line)) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                if (!inOrderedList) { html.push('<ol class="md-ol">'); inOrderedList = true; }
+                html.push(`<li>${this.inlineFormat(line.replace(/^\d+\. /, ''))}</li>`);
+                continue;
+            }
+
+            // Empty line
+            if (line.trim() === '') {
+                closeLists();
+                html.push('<br>');
+                continue;
+            }
+
+            // Normal paragraph line
+            closeLists();
+            html.push(`<p class="md-p">${this.inlineFormat(line)}</p>`);
+        }
+
+        if (inTable) flushTable();
+        closeLists();
+
+        return html.join('');
+    },
+
+    inlineFormat(text) {
         return text
+            .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n/g, '<br>')
-            .replace(/^- (.*)/gm, '<ul><li>$1</li></ul>')
-            .replace(/<\/ul>\s*<ul>/g, '');
+            .replace(/`(.*?)`/g, '<code>$1</code>');
     },
 
     // --- MODULES ---
@@ -860,7 +962,7 @@ const app = {
         });
 
         if (this.currentClient) {
-            const idx = this.clients.findIndex(c => c.name === this.currentClient.name);
+            const idx = this.clients.findIndex(c => c.id === this.currentClient);
             if (idx !== -1) selectEl.value = idx;
         }
     },
